@@ -5,6 +5,11 @@ import xml.etree.ElementTree as ET
 from datetime import date, datetime
 import os
 
+os.environ.pop("HTTP_PROXY", None)
+os.environ.pop("HTTPS_PROXY", None)
+os.environ.pop("http_proxy", None)
+os.environ.pop("https_proxy", None)
+
 def get_exchange_rates():
     url = "https://www.cbr.ru/scripts/XML_daily.asp"
 
@@ -295,14 +300,17 @@ def log(msg):
     """Вывод с меткой времени"""
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}", flush=True)
 
-def visit_encar():
+
+def update_cookies_from_playwright():
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             context = browser.new_context()
             page = context.new_page()
             page.goto("https://www.encar.com/")
-            time.sleep(2)
+
+            # Ждем, чтобы сервер зарегистрировал сессию
+            page.wait_for_timeout(2000)
 
             # Получаем куки из браузера
             cookies = context.cookies()
@@ -311,17 +319,21 @@ def visit_encar():
             # Преобразуем куки в формат для requests
             cookie_dict = {cookie['name']: cookie['value'] for cookie in cookies}
             cookie_string = "; ".join([f"{name}={value}" for name, value in cookie_dict.items()])
-            session.headers.update({"Cookie": cookie_string})
 
-            log("Куки успешно извлечены и добавлены в session.")
+            # Обновляем сессию
+            session.headers.update({
+                "Cookie": cookie_string
+            })
+
+            log("Куки успешно обновлены из Playwright.")
     except Exception as e:
-        log(f"Ошибка при посещении Encar через Playwright: {e}")
+        log(f"Ошибка при обновлении кук через Playwright: {e}")
 
 def cookie_refresher():
     while True:
         time.sleep(REFRESH_INTERVAL)
         log("Фоновое обновление кук через Playwright...")
-        visit_encar()
+        update_cookies_from_playwright()
         log("Фоновое обновление кук завершено.")
 
 @app.route("/")
@@ -412,7 +424,7 @@ if __name__ == "__main__":
     log("Все прокси были отключены.")
 
     log("Запуск приложения — получение IP через Playwright...")
-    visit_encar()
+    update_cookies_from_playwright()
     threading.Thread(target=cookie_refresher, daemon=True).start()
     log("Flask запущен")
     app.run(debug=True)
