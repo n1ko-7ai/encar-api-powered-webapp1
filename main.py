@@ -290,14 +290,21 @@ REFRESH_INTERVAL = 3 * 60 * 60  # 3 часа
 app = Flask(__name__)
 
 HEADERS = {
-        'accept': 'application/json, text/javascript, */*; q=0.01',
+    'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
     'accept-language': 'ru,en-US;q=0.9,en;q=0.8,ko;q=0.7,da;q=0.6,fr;q=0.5',
+    'cache-control': 'max-age=0',
     'dnt': '1',
-    'origin': 'https://www.encar.com',
-    'priority': 'u=1, i',
-    'referer': 'https://www.encar.com/',
+    'priority': 'u=0, i',
     'sec-ch-ua': '"Opera GX";v="121", "Chromium";v="137", "Not/A)Brand";v="24"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Windows"',
+    'sec-fetch-dest': 'document',
+    'sec-fetch-mode': 'navigate',
+    'sec-fetch-site': 'none',
+    'sec-fetch-user': '?1',
+    'upgrade-insecure-requests': '1',
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36 OPR/121.0.0.0 (Edition Campaign 34)',
+    'cookie': '_encar_hostname=https://www.encar.com; PCID=17577416528492457772199; _ga=GA1.2.400926650.1757741653; _gid=GA1.2.1340211684.1757741653; _enlog_datatalk_hit=; _enlog_lpi=2eb6.aHR0cHM6Ly93d3cuZW5jYXIuY29tL2RjL2RjX2NhcnNlYXJjaGxpc3QuZG8%2FY2FyVHlwZT1rb3IjISU3QiUyMmFjdGlvbiUyMiUzQSUyMihBbmQuSGlkZGVuLk4uXy5DYXJUeXBlLlkuKSUyMiUyQyUyMnRvZ2dsZSUyMiUzQSU3QiU3RCUyQyUyMmxheWVyJTIyJTNBJTIyJTIyJTJDJTIyc29ydCUyMiUzQSUyMk1vZGlmaWVkRGF0ZSUyMiUyQyUyMnBhZ2UlMjIlM0ExJTJDJTIybGltaXQlMjIlM0EyMCUyQyUyMnNlYXJjaEtleSUyMiUzQSUyMiUyMiUyQyUyMmxvZ2luQ2hlY2slMjIlM0FmYWxzZSU3RA%3D%3D.edd; _gat_UA-56065139-3=1; _ga_WY0RWR65ED=GS2.2.s1757752490$o3$g1$t1757752490$j60$l0$h0',
 }
 
 API_URL = (
@@ -305,47 +312,46 @@ API_URL = (
 )
 
 session = requests.Session()
-session.headers.update(HEADERS)
 
 def log(msg):
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}", flush=True)
 
 
-def update_cookies_from_playwright():
-    try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            context = browser.new_context()
-            page = context.new_page()
-            page.goto("https://www.encar.com/")
+# def update_cookies_from_playwright():
+#     try:
+#         with sync_playwright() as p:
+#             browser = p.chromium.launch(headless=True)
+#             context = browser.new_context()
+#             page = context.new_page()
+#             page.goto("https://www.encar.com/")
+#
+#             page.wait_for_timeout(8000)
+#
+#             cookies = context.cookies()
+#             browser.close()
+#
+#             cookie_dict = {cookie['name']: cookie['value'] for cookie in cookies}
+#             cookie_string = "; ".join([f"{name}={value}" for name, value in cookie_dict.items()])
+#
+#             session.headers.update({
+#                 "Cookie": cookie_string
+#             })
+#
+#             log("Куки успешно обновлены из Playwright.")
+#     except Exception as e:
+#         log(f"Ошибка при обновлении кук через Playwright: {e}")
 
-            page.wait_for_timeout(8000)
-
-            cookies = context.cookies()
-            browser.close()
-
-            cookie_dict = {cookie['name']: cookie['value'] for cookie in cookies}
-            cookie_string = "; ".join([f"{name}={value}" for name, value in cookie_dict.items()])
-
-            session.headers.update({
-                "Cookie": cookie_string
-            })
-
-            log("Куки успешно обновлены из Playwright.")
-    except Exception as e:
-        log(f"Ошибка при обновлении кук через Playwright: {e}")
-
-def cookie_refresher():
-    while True:
-        time.sleep(REFRESH_INTERVAL)
-        log("Фоновое обновление кук через Playwright...")
-        update_cookies_from_playwright()
-        log("Фоновое обновление кук завершено.")
+# def cookie_refresher():
+#     while True:
+#         time.sleep(REFRESH_INTERVAL)
+#         log("Фоновое обновление кук через Playwright...")
+#         update_cookies_from_playwright()
+#         log("Фоновое обновление кук завершено.")
 
 @app.route("/")
 def index():
     try:
-        response = session.get(API_URL, timeout=10, proxies=proxies, cookies=cookies)
+        response = session.get(API_URL, timeout=10, proxies=proxies, cookies=cookies, headers=HEADERS)
         response.raise_for_status()
         data = response.json()
         cars = data.get("SearchResults", [])
@@ -429,8 +435,8 @@ if __name__ == "__main__":
 
     log("Все прокси были отключены.")
 
-    log("Запуск приложения — получение IP через Playwright...")
-    update_cookies_from_playwright()
-    threading.Thread(target=cookie_refresher, daemon=True).start()
+    # log("Запуск приложения — получение IP через Playwright...")
+    # update_cookies_from_playwright()
+    # threading.Thread(target=cookie_refresher, daemon=True).start()
     log("Flask запущен")
     app.run(debug=True)
