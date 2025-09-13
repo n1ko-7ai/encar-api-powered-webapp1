@@ -10,6 +10,11 @@ os.environ.pop("HTTPS_PROXY", None)
 os.environ.pop("http_proxy", None)
 os.environ.pop("https_proxy", None)
 
+proxies = {
+  "http": "",
+  "https": "",
+}
+
 def get_exchange_rates():
     url = "https://www.cbr.ru/scripts/XML_daily.asp"
 
@@ -339,7 +344,7 @@ def cookie_refresher():
 @app.route("/")
 def index():
     try:
-        response = session.get(API_URL, timeout=10)
+        response = session.get(API_URL, timeout=10, proxies=proxies)
         response.raise_for_status()
         data = response.json()
         cars = data.get("SearchResults", [])
@@ -360,7 +365,7 @@ def index():
         )
 
         try:
-            response = session.get(url, headers=HEADERS, timeout=10)
+            response = session.get(url, headers=HEADERS, timeout=10, proxies=proxies)
             response.raise_for_status()
             cars_data = response.json()
             log(f"Получено {len(cars_data)} объектов автомобилей из батч-запроса")
@@ -401,7 +406,7 @@ def car_detail(car_id):
     )
 
     try:
-        response = session.get(url, headers=HEADERS, timeout=10)
+        response = session.get(url, headers=HEADERS, timeout=10, proxies=proxies)
         response.raise_for_status()
         data = response.json()
         car_data = data[0] if data else {}
