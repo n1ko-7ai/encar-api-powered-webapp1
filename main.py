@@ -271,7 +271,7 @@ app = Flask(__name__)
 
 HEADERS = {
     'accept': 'application/json, text/javascript, */*; q=0.01',
-    'accept-language': 'ru,en-US;q=0.9,en;q=0.8,ko;q=0.7,da;q=0.6',
+    'accept-language': 'ru,en-US;q=0.9,en;q=0.8,ko;q=0.7,da;q=0.6,fr;q=0.5',
     'origin': 'https://www.encar.com',
     'priority': 'u=1, i',
     'referer': 'https://www.encar.com/',
@@ -281,11 +281,7 @@ HEADERS = {
     'sec-fetch-dest': 'empty',
     'sec-fetch-mode': 'cors',
     'sec-fetch-site': 'same-site',
-    'user-agent': (
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-        '(KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36 '
-        'OPR/121.0.0.0 (Edition Campaign 34)'
-    ),
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36 OPR/121.0.0.0 (Edition Campaign 34)',
 }
 
 API_URL = (
@@ -306,9 +302,18 @@ def visit_encar():
             context = browser.new_context()
             page = context.new_page()
             page.goto("https://www.encar.com/")
-            time.sleep(2)  # Ждём, чтобы сервер успел зарегистрировать сессию по IP
+            time.sleep(2)
+
+            # Получаем куки из браузера
+            cookies = context.cookies()
             browser.close()
-        log("Playwright посетил сайт — IP Encar зарегистрирован.")
+
+            # Преобразуем куки в формат для requests
+            cookie_dict = {cookie['name']: cookie['value'] for cookie in cookies}
+            cookie_string = "; ".join([f"{name}={value}" for name, value in cookie_dict.items()])
+            session.headers.update({"Cookie": cookie_string})
+
+            log("Куки успешно извлечены и добавлены в session.")
     except Exception as e:
         log(f"Ошибка при посещении Encar через Playwright: {e}")
 
