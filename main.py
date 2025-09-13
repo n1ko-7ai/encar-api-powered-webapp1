@@ -291,25 +291,32 @@ API_URL = (
     "https://api.encar.com/search/car/list/premium?count=true&q=(And.Hidden.N._.(C.CarType.Y._.Manufacturer.현대.)_.Year.range(202012..202210).)&sr=%7CModifiedDate%7C0%7C20"
 )
 
-# Глобальная сессия
 session = requests.Session()
 session.headers.update(HEADERS)
 
+def log(msg):
+    """Вывод с меткой времени"""
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}", flush=True)
+
 def visit_encar():
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context()
-        page = context.new_page()
-        page.goto("https://www.encar.com/")
-        time.sleep(2)  # Ждём, чтобы сервер успел зарегистрировать сессию по IP
-        browser.close()
-    print("Playwright посетил сайт — IP Encar зарегистрирован.")
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            context = browser.new_context()
+            page = context.new_page()
+            page.goto("https://www.encar.com/")
+            time.sleep(2)  # Ждём, чтобы сервер успел зарегистрировать сессию по IP
+            browser.close()
+        log("Playwright посетил сайт — IP Encar зарегистрирован.")
+    except Exception as e:
+        log(f"Ошибка при посещении Encar через Playwright: {e}")
 
 def cookie_refresher():
     while True:
         time.sleep(REFRESH_INTERVAL)
-        print("Фоновое обновление кук...")
+        log("Фоновое обновление кук через Playwright...")
         visit_encar()
+        log("Фоновое обновление кук завершено.")
 
 @app.route("/")
 def index():
@@ -320,15 +327,15 @@ def index():
         cars = data.get("SearchResults", [])
 
         if not cars:
-            print(response.json)
+            log("WARNING: Не удалось получить данные от Encar: SearchResults пуст")
             return "Не удалось получить данные от Encar"
 
         rate = get_exchange_rates()
+        log(f"Обновлены курсы валют: {rate}")
 
-        # Собираем все ID автомобилей в одну строку через запятую
         car_ids = ",".join(str(car.get("Id")) for car in cars if car.get("Id"))
+        log(f"ID автомобилей для батч-запроса: {car_ids}")
 
-        # Батч-запрос к API
         url = (
             f"https://api.encar.com/v1/readside/vehicles"
             f"?vehicleIds={car_ids}&include=SPEC,ADVERTISEMENT,PHOTOS,CATEGORY,MANAGE,CONTACT,VIEW"
@@ -337,9 +344,9 @@ def index():
         try:
             response = session.get(url, headers=HEADERS, timeout=10)
             response.raise_for_status()
-            cars_data = response.json()  # список объектов автомобилей
+            cars_data = response.json()
+            log(f"Получено {len(cars_data)} объектов автомобилей из батч-запроса")
 
-            # Создаем словарь для быстрого поиска по ID из SearchResults
             cars_dict = {}
             for car_data in cars_data:
                 vehicle_id = str(car_data.get("id") or car_data.get("manage", {}).get("dummyVehicleId"))
@@ -357,14 +364,13 @@ def index():
 
                 price = car.get("Price", 0)
                 price_rub = convert_currency(price * 1000, "KRW", "RUB", rate)
-
                 car["Price_RUB"] = value_converter(price_rub)
 
-        except (requests.RequestException, json.JSONDecodeError, KeyError, IndexError) as e:
-            print(f"Ошибка при получении батч-данных авто: {e}")
+        except Exception as e:
+            log(f"Ошибка при получении батч-данных авто: {e}")
 
     except Exception as e:
-        print("Ошибка запроса API:", e)
+        log(f"Ошибка запроса API: {e}")
         cars = []
 
     return render_template("index.html", cars=cars)
@@ -377,29 +383,23 @@ def car_detail(car_id):
     )
 
     try:
-        # Делаем запрос к API через сессию
         response = session.get(url, headers=HEADERS, timeout=10)
         response.raise_for_status()
         data = response.json()
-
-        # Берем первый объект из списка
         car_data = data[0] if data else {}
         spec = car_data.get("spec", {})
         photos = car_data.get("photos", [])
-
-    except (requests.RequestException, json.JSONDecodeError, IndexError, KeyError) as e:
-        print(f"Ошибка при получении данных авто {car_id}: {e}")
+        log(f"Данные авто {car_id} успешно получены")
+    except Exception as e:
+        log(f"Ошибка при получении данных авто {car_id}: {e}")
         spec = {}
         photos = []
 
     return render_template("car_detail.html", car=spec, photos=photos)
 
 if __name__ == "__main__":
-    # 1. Получаем куки при старте
+    log("Запуск приложения — получение IP через Playwright")
     visit_encar()
-
-    # 2. Запускаем фоновое обновление каждые 3 часа
     threading.Thread(target=cookie_refresher, daemon=True).start()
-
-    # 3. Запускаем Flask
+    log("Flask запущен")
     app.run(debug=True)
