@@ -34,12 +34,15 @@ headers = {
 
 @app.route('/')
 def index():
-    response = requests.get(
-        'https://api.encar.com/search/car/list/premium?count=true&q=(And.Hidden.N._.CarType.Y.)&sr=%7CModifiedDate%7C0%7C20',
-        cookies=cookies,
-        headers=headers,
-    )
-    return response.text
+    try:
+        response = requests.get(
+            'https://api.encar.com/search/car/list/premium?count=true&q=(And.Hidden.N._.CarType.Y.)&sr=%7CModifiedDate%7C0%7C20',
+            cookies=cookies,
+            headers=headers,
+        )
+        return response.text
+    except Exception as e:
+        print(f"Ошибка запроса API: {e}")
 
 if __name__ == "__main__":
     app.run(debug=False)
