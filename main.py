@@ -15,6 +15,16 @@ proxies = {
   "https": "",
 }
 
+cookies = {
+    '_encar_hostname': 'https://www.encar.com',
+    'PCID': '17577416528492457772199',
+    '_ga': 'GA1.2.400926650.1757741653',
+    '_gid': 'GA1.2.1340211684.1757741653',
+    '_enlog_lpi': '4106.aHR0cHM6Ly93d3cuZW5jYXIuY29tL2luZGV4LmRv.d35',
+    '_enlog_datatalk_hit': '',
+    '_ga_WY0RWR65ED': 'GS2.2.s1757750336$o2$g1$t1757750660$j47$l0$h0',
+}
+
 def get_exchange_rates():
     url = "https://www.cbr.ru/scripts/XML_daily.asp"
 
@@ -280,18 +290,14 @@ REFRESH_INTERVAL = 3 * 60 * 60  # 3 часа
 app = Flask(__name__)
 
 HEADERS = {
-    'accept': 'application/json, text/javascript, */*; q=0.01',
+        'accept': 'application/json, text/javascript, */*; q=0.01',
     'accept-language': 'ru,en-US;q=0.9,en;q=0.8,ko;q=0.7,da;q=0.6,fr;q=0.5',
+    'dnt': '1',
     'origin': 'https://www.encar.com',
     'priority': 'u=1, i',
     'referer': 'https://www.encar.com/',
-    'sec-ch-ua': '"Chromium";v="137", "Google Chrome";v="137", ";Not A Brand";v="24"',
-    'sec-ch-ua-platform': '"Linux"',
-    'sec-ch-ua-mobile': '?0',
-    'sec-fetch-dest': 'empty',
-    'sec-fetch-mode': 'cors',
-    'sec-fetch-site': 'same-site',
-    'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36',
+    'sec-ch-ua': '"Opera GX";v="121", "Chromium";v="137", "Not/A)Brand";v="24"',
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36 OPR/121.0.0.0 (Edition Campaign 34)',
 }
 
 API_URL = (
@@ -302,30 +308,25 @@ session = requests.Session()
 session.headers.update(HEADERS)
 
 def log(msg):
-    """Вывод с меткой времени"""
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}", flush=True)
 
 
 def update_cookies_from_playwright():
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=False)
+            browser = p.chromium.launch(headless=True)
             context = browser.new_context()
             page = context.new_page()
             page.goto("https://www.encar.com/")
 
-            # Ждем, чтобы сервер зарегистрировал сессию
             page.wait_for_timeout(8000)
 
-            # Получаем куки из браузера
             cookies = context.cookies()
             browser.close()
 
-            # Преобразуем куки в формат для requests
             cookie_dict = {cookie['name']: cookie['value'] for cookie in cookies}
             cookie_string = "; ".join([f"{name}={value}" for name, value in cookie_dict.items()])
 
-            # Обновляем сессию
             session.headers.update({
                 "Cookie": cookie_string
             })
@@ -344,7 +345,7 @@ def cookie_refresher():
 @app.route("/")
 def index():
     try:
-        response = session.get(API_URL, timeout=10, proxies=proxies)
+        response = session.get(API_URL, timeout=10, proxies=proxies, cookies=cookies)
         response.raise_for_status()
         data = response.json()
         cars = data.get("SearchResults", [])
@@ -357,7 +358,7 @@ def index():
         log(f"Обновлены курсы валют: {rate}")
 
         car_ids = ",".join(str(car.get("Id")) for car in cars if car.get("Id"))
-        log(f"ID автомобилей для батч-запроса: {car_ids}")
+        log(f"ID: {car_ids}")
 
         url = (
             f"https://api.encar.com/v1/readside/vehicles"
@@ -365,7 +366,7 @@ def index():
         )
 
         try:
-            response = session.get(url, headers=HEADERS, timeout=10, proxies=proxies)
+            response = session.get(url, headers=HEADERS, timeout=10, proxies=proxies, cookies=cookies)
             response.raise_for_status()
             cars_data = response.json()
             log(f"Получено {len(cars_data)} объектов автомобилей из батч-запроса")
@@ -406,7 +407,7 @@ def car_detail(car_id):
     )
 
     try:
-        response = session.get(url, headers=HEADERS, timeout=10, proxies=proxies)
+        response = session.get(url, headers=HEADERS, timeout=10, proxies=proxies, cookies=cookies)
         response.raise_for_status()
         data = response.json()
         car_data = data[0] if data else {}
