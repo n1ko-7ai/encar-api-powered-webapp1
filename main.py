@@ -295,32 +295,21 @@ API_URL = (
 session = requests.Session()
 session.headers.update(HEADERS)
 
-def fetch_cookies_with_playwright():
+def visit_encar():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         context = browser.new_context()
         page = context.new_page()
         page.goto("https://www.encar.com/")
-        page.wait_for_load_state("networkidle")
-        time.sleep(1)
-        cookies = context.cookies()
+        time.sleep(2)  # Ждём, чтобы сервер успел зарегистрировать сессию по IP
         browser.close()
-
-    cookie_jar = requests.cookies.RequestsCookieJar()
-    for c in cookies:
-        cookie_jar.set(c["name"], c["value"], domain=c.get("domain"), path=c.get("path", "/"))
-    return cookie_jar
-
-def update_session_cookies():
-    global session
-    session.cookies = fetch_cookies_with_playwright()
-    print("Cookies обновлены через Playwright.")
+    print("Playwright посетил сайт — IP Encar зарегистрирован.")
 
 def cookie_refresher():
     while True:
         time.sleep(REFRESH_INTERVAL)
         print("Фоновое обновление кук...")
-        update_session_cookies()
+        visit_encar()
 
 @app.route("/")
 def index():
@@ -331,7 +320,8 @@ def index():
         cars = data.get("SearchResults", [])
 
         if not cars:
-            return render_template("index.html", cars=[])
+            print(response.json)
+            return "Не удалось получить данные от Encar"
 
         rate = get_exchange_rates()
 
@@ -367,6 +357,7 @@ def index():
 
                 price = car.get("Price", 0)
                 price_rub = convert_currency(price * 1000, "KRW", "RUB", rate)
+
                 car["Price_RUB"] = value_converter(price_rub)
 
         except (requests.RequestException, json.JSONDecodeError, KeyError, IndexError) as e:
@@ -405,7 +396,7 @@ def car_detail(car_id):
 
 if __name__ == "__main__":
     # 1. Получаем куки при старте
-    update_session_cookies()
+    visit_encar()
 
     # 2. Запускаем фоновое обновление каждые 3 часа
     threading.Thread(target=cookie_refresher, daemon=True).start()
