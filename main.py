@@ -309,13 +309,13 @@ def log(msg):
 def update_cookies_from_playwright():
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
+            browser = p.chromium.launch(headless=False)
             context = browser.new_context()
             page = context.new_page()
             page.goto("https://www.encar.com/")
 
             # Ждем, чтобы сервер зарегистрировал сессию
-            page.wait_for_timeout(2000)
+            page.wait_for_timeout(8000)
 
             # Получаем куки из браузера
             cookies = context.cookies()
