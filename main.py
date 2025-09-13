@@ -39,10 +39,15 @@ def index():
             'https://api.encar.com/search/car/list/premium?count=true&q=(And.Hidden.N._.CarType.Y.)&sr=%7CModifiedDate%7C0%7C20',
             cookies=cookies,
             headers=headers,
+            timeout=10
         )
-        return response.text
-    except Exception as e:
+        # Показываем код и тело
+        print("HTTP status code:", response.status_code)
+        print("Response length:", len(response.text))
+        return f"Status: {response.status_code}, Body length: {len(response.text)}"
+    except requests.exceptions.RequestException as e:
         print(f"Ошибка запроса API: {e}")
+        return f"Ошибка запроса: {e}"
 
 if __name__ == "__main__":
     app.run(debug=False)
