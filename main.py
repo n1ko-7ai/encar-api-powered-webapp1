@@ -3,6 +3,7 @@ import requests, json, threading, time
 from playwright.sync_api import sync_playwright
 import xml.etree.ElementTree as ET
 from datetime import date, datetime
+import os
 
 def get_exchange_rates():
     url = "https://www.cbr.ru/scripts/XML_daily.asp"
@@ -398,7 +399,14 @@ def car_detail(car_id):
     return render_template("car_detail.html", car=spec, photos=photos)
 
 if __name__ == "__main__":
-    log("Запуск приложения — получение IP через Playwright")
+    os.environ.pop("HTTP_PROXY", None)
+    os.environ.pop("HTTPS_PROXY", None)
+    os.environ.pop("http_proxy", None)
+    os.environ.pop("https_proxy", None)
+
+    log("Все прокси были отключены.")
+
+    log("Запуск приложения — получение IP через Playwright...")
     visit_encar()
     threading.Thread(target=cookie_refresher, daemon=True).start()
     log("Flask запущен")
