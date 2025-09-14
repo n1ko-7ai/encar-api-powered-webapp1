@@ -23,6 +23,7 @@ cookies = {
     '_enlog_lpi': '4106.aHR0cHM6Ly93d3cuZW5jYXIuY29tL2luZGV4LmRv.d35',
     '_enlog_datatalk_hit': '',
     '_ga_WY0RWR65ED': 'GS2.2.s1757750336$o2$g1$t1757750660$j47$l0$h0',
+    '_GRECAPTCHA': '09ANMylNDFzgr5wRqoBK56uOsVy86r9Neu37NcqU88rx-VSCEbteig4Zu8dRZkZq0VlTzf1rGa_8MdCOGGC2wi03s', 'JSESSIONID': '2EA556C14A209EF47EE7223532C26F55.mono-web-prod_199.37', 'WMONID': 'M69iISPMT-E'
 }
 
 def get_exchange_rates():

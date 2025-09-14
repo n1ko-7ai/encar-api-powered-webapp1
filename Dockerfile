@@ -34,7 +34,6 @@ RUN playwright install --with-deps chromium
 # 6. Скопировать весь проект в контейнер
 COPY . .
 
-# 7. Запуск Flask через Gunicorn (Render сам подставит $PORT)
-CMD exec gunicorn -b 0.0.0.0:$PORT main:app
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:$PORT"]
 
 
