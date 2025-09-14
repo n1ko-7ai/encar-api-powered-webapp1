@@ -322,7 +322,7 @@ def update_cookies_from_playwright():
              page = context.new_page()
              page.goto("https://www.encar.com/")
 
-             page.wait_for_timeout(8000)
+             page.wait_for_timeout(3000)
 
              cookies = context.cookies()
              browser.close()
@@ -346,11 +346,20 @@ def cookie_refresher():
          log("Фоновое обновление кук завершено.")
 
 @app.route("/")
+def index():
+    pass
 
 @app.route("/hyundai")
 def hyundai_car():
     try:
-        response = session.get(API_URL, timeout=10, proxies=proxies, cookies=cookies, headers=HEADERS)
+        log(f"Используется прокси: {proxies}")  # 👈 добавил вывод прокси
+        response = session.get(
+            API_URL,
+            timeout=10,
+            proxies=proxies,
+            cookies=cookies,
+            headers=HEADERS
+        )
         response.raise_for_status()
         data = response.json()
         cars = data.get("SearchResults", [])
@@ -371,7 +380,14 @@ def hyundai_car():
         )
 
         try:
-            response = session.get(url, headers=HEADERS, timeout=10, proxies=proxies, cookies=cookies)
+            log(f"Используется прокси: {proxies}")  # 👈 ещё раз для батч-запроса
+            response = session.get(
+                url,
+                headers=HEADERS,
+                timeout=10,
+                proxies=proxies,
+                cookies=cookies
+            )
             response.raise_for_status()
             cars_data = response.json()
             log(f"Получено {len(cars_data)} объектов автомобилей из батч-запроса")
