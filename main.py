@@ -357,7 +357,8 @@ def index():
 @app.route("/hyundai")
 def hyundai_car():
     try:
-        log(f"Используется прокси: {proxies}")  # 👈 добавил вывод прокси
+        log(f"Используется прокси: {proxies}")
+        log(f"Куки: {cookies}")
         response = session.get(
             API_URL,
             timeout=10,
@@ -424,7 +425,7 @@ def hyundai_car():
         log(f"Ошибка запроса API: {e}")
         cars = []
 
-    return render_template("index.html", cars=cars)
+    return render_template("car_filter.html", cars=cars)
 
 @app.route("/car/<int:car_id>")
 def car_detail(car):
