@@ -315,27 +315,32 @@ def log(msg):
 
 
 def update_cookies_from_playwright():
-     try:
-         with sync_playwright() as p:
-             browser = p.chromium.launch(headless=True)
-             context = browser.new_context()
-             page = context.new_page()
-             page.goto("https://www.encar.com/")
+    global cookies
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            context = browser.new_context()
+            page = context.new_page()
+            page.goto("https://www.encar.com/")
 
-             page.wait_for_timeout(3000)
+            page.wait_for_timeout(8000)
 
-             cookies = context.cookies()
-             browser.close()
+            playwright_cookies = context.cookies()
+            browser.close()
 
-             cookie_dict = {cookie['name']: cookie['value'] for cookie in cookies}
-             cookie_string = "; ".join([f"{name}={value}" for name, value in cookie_dict.items()])
+            # Добавляем только новые ключи
+            for cookie in playwright_cookies:
+                name, value = cookie["name"], cookie["value"]
+                if name not in cookies:   # если в глобальных нет — добавляем
+                    cookies[name] = value
 
-             session.headers.update({
-                 "Cookie": cookie_string
-             })
+            # Пересобираем строку для headers
+            cookie_string = "; ".join([f"{k}={v}" for k, v in cookies.items()])
+            session.headers.update({"Cookie": cookie_string})
 
-             log("Куки успешно обновлены из Playwright.")
-     except Exception as e:
+            log(f"🍪 Куки обновлены. Сейчас в словаре {len(cookies)} шт.")
+
+    except Exception as e:
         log(f"Ошибка при обновлении кук через Playwright: {e}")
 
 def cookie_refresher():
@@ -347,7 +352,7 @@ def cookie_refresher():
 
 @app.route("/")
 def index():
-    pass
+    return "This is main page, but not ready yet" # Пока тут ничего не будет
 
 @app.route("/hyundai")
 def hyundai_car():
@@ -380,7 +385,8 @@ def hyundai_car():
         )
 
         try:
-            log(f"Используется прокси: {proxies}")  # 👈 ещё раз для батч-запроса
+            log(f"Используется прокси: {proxies}")
+            log(f"Куки: {cookies}")
             response = session.get(
                 url,
                 headers=HEADERS,
@@ -436,4 +442,4 @@ if __name__ == "__main__":
     update_cookies_from_playwright()
     threading.Thread(target=cookie_refresher, daemon=True).start()
     log("Flask запущен")
-    app.run(debug=True)
+    app.run(debug=False)
