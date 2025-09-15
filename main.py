@@ -326,7 +326,8 @@ def update_cookies_and_tokens():
         browser = p.chromium.launch(headless=True,
                                     args=[
                                         "--window-size=1920,1080",
-                                        "--disable-blink-features=AutomationControlled"
+                                        "--disable-blink-features=AutomationControlled",
+                                        "--no-sandbox"
                                     ])
         context = browser.new_context(
             viewport={'width': 1920, 'height': 1080},

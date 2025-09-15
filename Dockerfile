@@ -29,7 +29,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # 5. Установить Chromium для Playwright
-RUN playwright install --with-deps chromium
+RUN playwright install chromium
 
 # 6. Скопировать весь проект в контейнер
 COPY . .
