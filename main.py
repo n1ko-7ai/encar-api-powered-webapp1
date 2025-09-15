@@ -348,6 +348,7 @@ def car_list(car_brand, page):
 
     try:
         log(f"Используется прокси: {proxies}")
+        log(f"Куки: {session.cookies}")
         response = session.get(
             API_URL,
             timeout=10,
