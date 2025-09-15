@@ -317,30 +317,83 @@ def update_cookies_from_playwright():
     global cookies
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=False)
-            context = browser.new_context()
-            page = context.new_page()
-            page.goto("https://www.encar.com/")
+            # Запуск в headless, с минимальным набором опций для устойчивости в контейнерах
+            browser = p.chromium.launch(
+                headless=True,
+                args=[
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-blink-features=AutomationControlled",
+                    "--disable-infobars"
+                ]
+            )
 
+            # Контекст с нормальным юзер-агентом и стандартным viewport
+            context = browser.new_context(
+                user_agent=HEADERS.get("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"),
+                viewport={"width": 1280, "height": 720},
+                locale="en-US"
+            )
+
+            page = context.new_page()
+
+            # Лёгкие патчи, выполняемые перед загрузкой страницы (не агрессивные)
+            page.add_init_script("""
+                // Убираем navigator.webdriver, часто первое, что проверяют
+                Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+
+                // Предоставляем минимальную структуру window.chrome
+                try { window.chrome = window.chrome || { runtime: {} }; } catch(e){}
+
+                // Устанавливаем пару языков, чтобы не было пустого массива
+                Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+            """)
+
+            # Перейти на страницу и дождаться сетевых активностей
+            page.goto("https://www.encar.com/", timeout=20000)
+            page.wait_for_load_state("networkidle")
+            # Небольшая пауза, даём сайту записать куки/сессию
             page.wait_for_timeout(2000)
 
+            # Лёгкая имитация: смещение курсора (если возможно) — не критично
+            try:
+                page.mouse.move(100, 100)
+            except Exception:
+                pass
+
+            # Забираем куки
             playwright_cookies = context.cookies()
-            browser.close()
 
-            # Добавляем только новые ключи
+            # Закрываем ресурсы аккуратно
+            try:
+                context.close()
+            except Exception:
+                pass
+            try:
+                browser.close()
+            except Exception:
+                pass
+
+            # Добавляем только новые ключи в глобальный словарь cookies
+            added = 0
             for cookie in playwright_cookies:
-                name, value = cookie["name"], cookie["value"]
-                if name not in cookies:   # если в глобальных нет — добавляем
+                name = cookie.get("name")
+                value = cookie.get("value")
+                if not name:
+                    continue
+                if name not in cookies:
                     cookies[name] = value
+                    added += 1
 
-            # Пересобираем строку для headers
+            # Пересобираем строку Cookie и обновляем заголовки сессии
             cookie_string = "; ".join([f"{k}={v}" for k, v in cookies.items()])
             session.headers.update({"Cookie": cookie_string})
 
-            log(f"🍪 Куки обновлены. Сейчас в словаре {len(cookies)} шт.")
+            log(f"🍪 Куки обновлены лёгкой маскировкой. Добавлено: {added}. Всего куки: {len(cookies)}")
 
     except Exception as e:
         log(f"Ошибка при обновлении кук через Playwright: {e}")
+
 
 def cookie_refresher():
      while True:
