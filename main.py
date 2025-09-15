@@ -15,26 +15,6 @@ proxies = {
   "https": "",
 }
 
-cookies = {
-    "JSESSIONID": "5D52C71EC437811150BD165B12CD35E2.mono-web-prod_193.175",
-    "WMONID": "M5nxBAlOFm7",
-    "_encar_hostname": "https://www.encar.com",
-    "_fwb": "168LksOSJ5HJOGuUc9ZWk6u.1757929942554",
-    "wcs_bt": "4b4e532670e38c:1757929942",
-    "OAX": "d0LgUmjH4doABDpg",
-    "NWB": "ca7e74c84388a767765a0427e05797d9.1757929946280",
-    "NAC": "VhLcBwgi4lED",
-    "test_cookie": "CheckForPermission",
-    "PCID": "17579299428677461293495",
-    "_enlog_lpi": "f4f1.aHR0cHM6Ly93d3cuZW5jYXIuY29tL2RjL2RjX2NhcnNlYXJjaGxpc3QuZG8%2FY2FyVHlwZT1rb3IjISU3QiUyMmFjdGlvbiUyMiUzQSUyMihBbmQuSGlkZGVuLk4uXy5DYXJUeXBlLlkuKSUyMiUyQyUyMnRvZ2dsZSUyMiUzQSU3QiU3RCUyQyUyMmxheWVyJTIyJTNBJTIyJTIyJTJDJTIyc29ydCUyMiUzQSUyMk1vZGlmaWVkRGF0ZSUyMiUyQyUyMnBhZ2UlMjIlM0ExJTJDJTIybGltaXQlMjIlM0EyMCUyQyUyMnNlYXJjaEtleSUyMiUzQSUyMiUyMiUyQyUyMmxvZ2luQ2hlY2slMjIlM0FmYWxzZSU3RA%3D%3D.8ef",
-    "_ga": "GA1.2.1495529719.1757929943",
-    "_gid": "GA1.2.501377402.1757929943",
-    "_gat_UA-56065139-3": "1",
-    "_fbp": "fb.1.1757929943281.22104241171159659",
-    "_ga_WY0RWR65ED": "GS2.2.s1757929943$o1$g1$t1757929943$j60$l0$h0"
-}
-
-
 rate = {}
 
 def get_exchange_rates():
@@ -368,12 +348,10 @@ def car_list(car_brand, page):
 
     try:
         log(f"Используется прокси: {proxies}")
-        log(f"Куки: {cookies}")
         response = session.get(
             API_URL,
             timeout=10,
             proxies=proxies,
-            cookies=cookies,
             headers=HEADERS
         )
         response.raise_for_status()
@@ -398,13 +376,11 @@ def car_list(car_brand, page):
 
         try:
             log(f"Используется прокси: {proxies}")
-            log(f"Куки: {cookies}")
             response = session.get(
                 url,
                 headers=HEADERS,
                 timeout=10,
                 proxies=proxies,
-                cookies=cookies
             )
             response.raise_for_status()
             cars_data = response.json()
