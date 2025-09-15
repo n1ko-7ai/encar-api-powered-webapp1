@@ -26,6 +26,8 @@ cookies = {
     '_GRECAPTCHA': '09ANMylNDFzgr5wRqoBK56uOsVy86r9Neu37NcqU88rx-VSCEbteig4Zu8dRZkZq0VlTzf1rGa_8MdCOGGC2wi03s', 'JSESSIONID': '2EA556C14A209EF47EE7223532C26F55.mono-web-prod_199.37', 'WMONID': 'M69iISPMT-E'
 }
 
+rate = {}
+
 def get_exchange_rates():
     url = "https://www.cbr.ru/scripts/XML_daily.asp"
 
@@ -305,10 +307,6 @@ HEADERS = {
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
 }
 
-API_URL = (
-    "https://api.encar.com/search/car/list/premium?count=true&q=(And.Hidden.N._.(C.CarType.Y._.Manufacturer.현대.)_.Year.range(202012..202210).)&sr=%7CModifiedDate%7C0%7C20"
-)
-
 session = requests.Session()
 
 def log(msg):
@@ -319,12 +317,12 @@ def update_cookies_from_playwright():
     global cookies
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
+            browser = p.chromium.launch(headless=False)
             context = browser.new_context()
             page = context.new_page()
             page.goto("https://www.encar.com/")
 
-            page.wait_for_timeout(8000)
+            page.wait_for_timeout(2000)
 
             playwright_cookies = context.cookies()
             browser.close()
@@ -351,12 +349,25 @@ def cookie_refresher():
          update_cookies_from_playwright()
          log("Фоновое обновление кук завершено.")
 
+def rates_refresher():
+    while True:
+        time.sleep(REFRESH_INTERVAL)
+        log("Фоновое обновление курса")
+        rate = get_exchange_rates()
+        log("Фоновое обновление курса завершено.")
+
 @app.route("/")
 def index():
     return "This is main page, but not ready yet" # Пока тут ничего не будет
 
-@app.route("/hyundai")
-def hyundai_car():
+@app.route("/car-list/<string:car_brand>/<int:page>")
+def car_list(car_brand, page):
+    start = (page - 1) * 8
+
+    API_URL = (
+        f"https://api.encar.com/search/car/list/premium?count=true&q=(And.Hidden.N._.(C.CarType.Y._.Manufacturer.{car_brand}.)_.Year.range(202012..202210).)&sr=%7CModifiedDate%7C{start}%7C8"
+    )
+
     try:
         log(f"Используется прокси: {proxies}")
         log(f"Куки: {cookies}")
@@ -375,7 +386,6 @@ def hyundai_car():
             log("WARNING: Не удалось получить данные от Encar: SearchResults пуст")
             return "Не удалось получить данные от Encar"
 
-        rate = get_exchange_rates()
         log(f"Обновлены курсы валют: {rate}")
 
         car_ids = ",".join(str(car.get("Id")) for car in cars if car.get("Id"))
@@ -385,6 +395,8 @@ def hyundai_car():
             f"https://api.encar.com/v1/readside/vehicles"
             f"?vehicleIds={car_ids}&include=SPEC,ADVERTISEMENT,PHOTOS,CATEGORY,MANAGE,CONTACT,VIEW"
         )
+
+        log(url)
 
         try:
             log(f"Используется прокси: {proxies}")
@@ -402,22 +414,46 @@ def hyundai_car():
 
             cars_dict = {}
             for car_data in cars_data:
-                vehicle_id = str(car_data.get("id") or car_data.get("manage", {}).get("dummyVehicleId"))
+                manage = car_data.get("manage", {})
+                # Выбираем правильный ключ: если dummy=True, то берем dummyVehicleId
+                if manage.get("dummy"):
+                    vehicle_id = str(manage.get("dummyVehicleId"))
+                else:
+                    vehicle_id = str(car_data.get("vehicleId"))
+
                 if vehicle_id:
                     cars_dict[vehicle_id] = car_data
 
+            log(cars_dict)
+
             for car in cars:
                 car_id = str(car.get("Id"))
-                car_data = cars_dict.get(car_id, {})
-                category = car_data.get("category", {})
+                car_data = None
 
-                car["Manufacturer_eng"] = category.get("manufacturerEnglishName", "")
-                car["Model_eng"] = category.get("modelGroupEnglishName", "")
-                car["grade_eng"] = category.get("gradeEnglishName", "")
+                # Ищем машину в словаре: сначала как обычный vehicleId
+                if car_id in cars_dict:
+                    car_data = cars_dict[car_id]
+                else:
+                    # Если не нашли, ищем как dummyVehicleId
+                    for v_id, data in cars_dict.items():
+                        if data.get("manage", {}).get("dummy") and str(data["manage"].get("dummyVehicleId")) == car_id:
+                            car_data = data
+                            break
+
+                if not car_data:
+                    log(f"WARNING: Car ID {car_id} не найден в cars_dict")
+                    continue
+
+                category = car_data.get('category', {})
+                car["Manufacturer_eng"] = category.get("manufacturerEnglishName")
+                car["Model_eng"] = category.get("modelGroupEnglishName")
+                car["grade_eng"] = category.get("gradeEnglishName")
 
                 price = car.get("Price", 0)
                 price_rub = convert_currency(price * 1000, "KRW", "RUB", rate)
                 car["Price_RUB"] = value_converter(price_rub)
+
+                log(car)
 
         except Exception as e:
             log(f"Ошибка при получении батч-данных авто: {e}")
@@ -426,11 +462,11 @@ def hyundai_car():
         log(f"Ошибка запроса API: {e}")
         cars = []
 
-    return render_template("car_filter.html", cars=cars)
+    return render_template("car_list.html", cars=cars, car_brand=car_brand, page=page)
 
-@app.route("/car/<int:car_id>")
-def car_detail(car):
-    return render_template("car_detail.html", car=car)
+@app.route("/vehicle/<int:car_id>")
+def car_detail(car_id):
+    return render_template("car_detail.html", car=car_id)
 
 if __name__ == "__main__":
     os.environ.pop("HTTP_PROXY", None)
@@ -440,8 +476,11 @@ if __name__ == "__main__":
 
     log("Все прокси были отключены.")
 
-    log("Запуск приложения — получение IP через Playwright...")
+    log("Запуск Playwright..")
     update_cookies_from_playwright()
+    log("Обновления курса")
+    rate = get_exchange_rates()
     threading.Thread(target=cookie_refresher, daemon=True).start()
+    threading.Thread(target=rates_refresher, daemon=True).start()
     log("Flask запущен")
-    app.run(debug=False)
+    app.run(debug=True)

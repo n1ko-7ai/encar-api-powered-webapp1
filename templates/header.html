@@ -1,0 +1,27 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-danger">
+  <div class="container">
+    <!-- Логотип -->
+    <a class="navbar-brand d-flex align-items-center" href="/">
+      <img src="{{ url_for('static', filename='encar_logo.png') }}" alt="Logo" height="40" class="me-2">
+        Cars Company
+    </a>
+
+    <!-- Кнопка для мобилок -->
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+      aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <!-- Разделы -->
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item"><a class="nav-link" href="">Hyundai</a></li>
+        <li class="nav-item"><a class="nav-link" href="">Kia</a></li>
+        <li class="nav-item"><a class="nav-link" href="">Genesis</a></li>
+        <li class="nav-item"><a class="nav-link" href="">BMW</a></li>
+        <li class="nav-item"><a class="nav-link" href="">Benz</a></li>
+        <li class="nav-item"><a class="nav-link" href="">Audi</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>

@@ -403,7 +403,7 @@ def index():
         log(f"Ошибка запроса API: {e}")
         cars = []
 
-    return render_template("car_filter.html", cars=cars)
+    return render_template("car_list.html", cars=cars)
 
 @app.route("/car/<int:car_id>")
 def car_detail(car_id):
