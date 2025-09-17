@@ -307,7 +307,6 @@ def update_cookies_and_tokens(headless=True, save_state_path="playwright_storage
     with sync_playwright() as p:
         browser = p.chromium.launch(
             headless=headless,
-            executable_path="/usr/bin/chromium",
             args=["--no-sandbox", "--disable-dev-shm-usage"]
         )
 
@@ -511,3 +510,7 @@ def initialize_app():
     rate = get_exchange_rates()
     threading.Thread(target=rates_refresher, daemon=True).start()
     log("Flask запущен")
+
+if __name__ == "__main__":
+    initialize_app()
+    app.run(debug=True)

@@ -22,4 +22,4 @@ WORKDIR /app
 ENV PORT=10000
 
 # Запуск через Gunicorn
-CMD ["gunicorn", "main:app", "--bind", "0.0.0.0:10000"]
+CMD ["sh", "-c", "python startup.py && gunicorn main:app --bind 0.0.0.0:$PORT"]
