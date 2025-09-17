@@ -301,7 +301,7 @@ session = requests.Session()
 def log(msg):
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}", flush=True)
 
-def update_cookies_and_tokens(headless=True, save_state_path="playwright_storage.json"):
+def update_cookies_and_tokens(headless=False, save_state_path="playwright_storage.json"):
     ENCAR_PAGE = "https://www.encar.com/dc/dc_carsearchlist.do?carType=kor"
 
     with sync_playwright() as p:
