@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: encar-flask
+    env: docker
+    plan: free
+    autoDeploy: true
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "TRUE"

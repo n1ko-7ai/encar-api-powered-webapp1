@@ -301,31 +301,85 @@ session = requests.Session()
 def log(msg):
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}", flush=True)
 
-def update_cookies_and_tokens():
+def update_cookies_and_tokens(headless=True, save_state_path="playwright_storage.json"):
+    ENCAR_PAGE = "https://www.encar.com/dc/dc_carsearchlist.do?carType=kor"
+
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True,
-                                    args=[
-                                        "--window-size=1920,1080",
-                                        "--disable-blink-features=AutomationControlled",
-                                        "--no-sandbox"
-                                    ])
+        browser = p.chromium.launch(
+            headless=headless,
+            executable_path="/usr/bin/chromium",
+            args=["--no-sandbox", "--disable-dev-shm-usage"]
+        )
+
         context = browser.new_context(
             viewport={'width': 1920, 'height': 1080},
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
+            user_agent=("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) "
+                        "Chrome/140.0.0.0 Safari/537.36"),
+            locale="ko-KR",
         )
+
         page = context.new_page()
 
-        # Эмуляция движений мыши и задержек может помочь
-        page.goto("https://www.encar.com/dc/dc_carsearchlist.do?carType=kor")
+        print("[playwright] Навигация на страницу...")
+        try:
+            page.goto(ENCAR_PAGE, wait_until="networkidle", timeout=30000)
+        except Exception:
+            print("[playwright] Warning: networkidle timeout; попытаемся дождаться селектора.")
+
+        try:
+            page.wait_for_selector("body", timeout=10000)
+        except Exception:
+            print("[playwright] Warning: selector wait timed out")
+
+        page.wait_for_timeout(1500)
 
         cookies_list = context.cookies()
         cookies_dict = {c['name']: c['value'] for c in cookies_list}
-        session.cookies.update(cookies_dict)
+        print("[playwright] Получено cookies:")
+        for k, v in cookies_dict.items():
+            print(f"  {k} = {v}")
 
+        # Обновляем cookies в requests.Session
+        jar = requests.cookies.RequestsCookieJar()
         for cookie in cookies_list:
-            print(f"{cookie['name']} : {cookie['value']}")
+            jar.set(
+                name=cookie['name'],
+                value=cookie['value'],
+                domain=cookie.get('domain', 'www.encar.com'),
+                path=cookie.get('path', '/')
+            )
+        session.cookies.update(jar)
+
+        # Получаем localStorage и sessionStorage
+        try:
+            local_raw = page.evaluate("() => JSON.stringify({...localStorage})")
+            session_raw = page.evaluate("() => JSON.stringify({...sessionStorage})")
+            local = json.loads(local_raw) if local_raw else {}
+            session_storage = json.loads(session_raw) if session_raw else {}
+        except Exception as e:
+            print("[playwright] Ошибка чтения storages:", e)
+            local = {}
+            session_storage = {}
+
+        print("[playwright] localStorage keys:", list(local.keys()))
+        print("[playwright] sessionStorage keys:", list(session_storage.keys()))
+
+        try:
+            context.storage_state(path=save_state_path)
+            print(f"[playwright] storage_state сохранён в {save_state_path}")
+        except Exception as e:
+            print("[playwright] Не удалось сохранить storage_state:", e)
 
         browser.close()
+
+        return {
+            "cookies_list": cookies_list,
+            "cookies_dict": cookies_dict,
+            "localStorage": local,
+            "sessionStorage": session_storage,
+            "saved_state_file": save_state_path
+        }
 
 def rates_refresher():
     while True:
@@ -443,7 +497,7 @@ def car_list(car_brand, page):
 def car_detail(car_id):
     return render_template("car_detail.html", car=car_id)
 
-if __name__ == "__main__":
+def initialize_app():
     os.environ.pop("HTTP_PROXY", None)
     os.environ.pop("HTTPS_PROXY", None)
     os.environ.pop("http_proxy", None)
@@ -457,4 +511,3 @@ if __name__ == "__main__":
     rate = get_exchange_rates()
     threading.Thread(target=rates_refresher, daemon=True).start()
     log("Flask запущен")
-    app.run(debug=True)
