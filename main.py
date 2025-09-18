@@ -301,22 +301,25 @@ session = requests.Session()
 def log(msg):
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}", flush=True)
 
-def update_cookies_and_tokens(headless=True, save_state_path="playwright_storage.json"):
+def update_cookies_and_tokens(save_state_path="playwright_storage.json"):
     ENCAR_PAGE = "https://www.encar.com/dc/dc_carsearchlist.do?carType=kor"
 
     with sync_playwright() as p:
         browser = p.chromium.launch(
-            headless=headless,
-            args=[ "--disable-gpu",
-        "--no-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-setuid-sandbox",
-        "--disable-infobars",
-        "--window-size=1280,800" ]
+            headless=False,  # headed режим
+            args=[
+                "--disable-gpu",
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-setuid-sandbox",
+                "--disable-infobars",
+                "--window-size=1280,800",
+                "--disable-blink-features=AutomationControlled",  # маскировка headless
+            ]
         )
 
         context = browser.new_context(
-            viewport={'width': 1920, 'height': 1080},
+            viewport={'width': 1280, 'height': 800},
             user_agent=("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                         "AppleWebKit/537.36 (KHTML, like Gecko) "
                         "Chrome/140.0.0.0 Safari/537.36"),
@@ -324,19 +327,23 @@ def update_cookies_and_tokens(headless=True, save_state_path="playwright_storage
         )
 
         page = context.new_page()
-
         print("[playwright] Навигация на страницу...")
+
         try:
             page.goto(ENCAR_PAGE, wait_until="networkidle", timeout=30000)
         except Exception:
-            print("[playwright] Warning: networkidle timeout; попытаемся дождаться селектора.")
+            print("[playwright] Warning: networkidle timeout; пробуем ждать body")
 
         try:
             page.wait_for_selector("body", timeout=10000)
         except Exception:
             print("[playwright] Warning: selector wait timed out")
 
-        page.wait_for_timeout(1500)
+        # Имитация действий
+        page.mouse.move(100, 100)
+        page.mouse.click(100, 100)
+        page.keyboard.press("PageDown")
+        page.wait_for_timeout(2000)
 
         cookies_list = context.cookies()
         cookies_dict = {c['name']: c['value'] for c in cookies_list}
@@ -344,7 +351,6 @@ def update_cookies_and_tokens(headless=True, save_state_path="playwright_storage
         for k, v in cookies_dict.items():
             print(f"  {k} = {v}")
 
-        # Обновляем cookies в requests.Session
         jar = requests.cookies.RequestsCookieJar()
         for cookie in cookies_list:
             jar.set(
@@ -355,7 +361,6 @@ def update_cookies_and_tokens(headless=True, save_state_path="playwright_storage
             )
         session.cookies.update(jar)
 
-        # Получаем localStorage и sessionStorage
         try:
             local_raw = page.evaluate("() => JSON.stringify({...localStorage})")
             session_raw = page.evaluate("() => JSON.stringify({...sessionStorage})")
