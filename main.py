@@ -307,7 +307,12 @@ def update_cookies_and_tokens(headless=True, save_state_path="playwright_storage
     with sync_playwright() as p:
         browser = p.chromium.launch(
             headless=headless,
-            args=["--no-sandbox", "--disable-dev-shm-usage"]
+            args=[ "--disable-gpu",
+        "--no-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-setuid-sandbox",
+        "--disable-infobars",
+        "--window-size=1280,800" ]
         )
 
         context = browser.new_context(
