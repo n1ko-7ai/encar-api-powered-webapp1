@@ -306,7 +306,7 @@ def update_cookies_and_tokens(save_state_path="playwright_storage.json"):
 
     with sync_playwright() as p:
         browser = p.chromium.launch(
-            headless=False,  # headed режим
+            headless=False,
             args=[
                 "--disable-gpu",
                 "--no-sandbox",
@@ -314,23 +314,29 @@ def update_cookies_and_tokens(save_state_path="playwright_storage.json"):
                 "--disable-setuid-sandbox",
                 "--disable-infobars",
                 "--window-size=1280,800",
-                "--disable-blink-features=AutomationControlled",  # маскировка headless
+                "--disable-blink-features=AutomationControlled",
             ]
         )
 
         context = browser.new_context(
-            viewport={'width': 1280, 'height': 800},
-            user_agent=("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                        "AppleWebKit/537.36 (KHTML, like Gecko) "
-                        "Chrome/140.0.0.0 Safari/537.36"),
+            viewport={"width": 1280, "height": 800},
+            user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/140.0.0.0 Safari/537.36"
+            ),
             locale="ko-KR",
+            java_script_enabled=True
         )
+
+        # Маскировка Playwright
+        context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
         page = context.new_page()
         print("[playwright] Навигация на страницу...")
 
         try:
-            page.goto(ENCAR_PAGE, wait_until="networkidle", timeout=30000)
+            page.goto(ENCAR_PAGE, wait_until="networkidle", timeout=60000)
         except Exception:
             print("[playwright] Warning: networkidle timeout; пробуем ждать body")
 
@@ -340,27 +346,43 @@ def update_cookies_and_tokens(save_state_path="playwright_storage.json"):
             print("[playwright] Warning: selector wait timed out")
 
         # Имитация действий
-        page.mouse.move(100, 100)
-        page.mouse.click(100, 100)
+        page.mouse.move(200, 300)
+        page.mouse.click(200, 300)
         page.keyboard.press("PageDown")
-        page.wait_for_timeout(2000)
+        page.keyboard.press("ArrowDown")
+        page.wait_for_timeout(3000)
 
+        # Проверка WebGL (опционально)
+        try:
+            page.evaluate("""
+                () => {
+                    const canvas = document.createElement('canvas');
+                    const gl = canvas.getContext('webgl');
+                    if (!gl) console.log('WebGL not supported');
+                }
+            """)
+        except Exception:
+            print("[playwright] WebGL check failed")
+
+        # Получение cookies
         cookies_list = context.cookies()
-        cookies_dict = {c['name']: c['value'] for c in cookies_list}
+        cookies_dict = {c["name"]: c["value"] for c in cookies_list}
         print("[playwright] Получено cookies:")
         for k, v in cookies_dict.items():
             print(f"  {k} = {v}")
 
+        # Обновление requests.Session
         jar = requests.cookies.RequestsCookieJar()
         for cookie in cookies_list:
             jar.set(
-                name=cookie['name'],
-                value=cookie['value'],
-                domain=cookie.get('domain', 'www.encar.com'),
-                path=cookie.get('path', '/')
+                name=cookie["name"],
+                value=cookie["value"],
+                domain=cookie.get("domain", "www.encar.com"),
+                path=cookie.get("path", "/")
             )
         session.cookies.update(jar)
 
+        # Получение localStorage и sessionStorage
         try:
             local_raw = page.evaluate("() => JSON.stringify({...localStorage})")
             session_raw = page.evaluate("() => JSON.stringify({...sessionStorage})")
@@ -374,6 +396,7 @@ def update_cookies_and_tokens(save_state_path="playwright_storage.json"):
         print("[playwright] localStorage keys:", list(local.keys()))
         print("[playwright] sessionStorage keys:", list(session_storage.keys()))
 
+        # Сохранение состояния
         try:
             context.storage_state(path=save_state_path)
             print(f"[playwright] storage_state сохранён в {save_state_path}")
