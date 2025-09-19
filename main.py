@@ -1,9 +1,11 @@
 from flask import Flask, render_template
 import requests, json, threading, time
-from playwright.sync_api import sync_playwright
+from playwright.async_api import async_playwright
 import xml.etree.ElementTree as ET
 from datetime import date, datetime
+import asyncio
 import os
+from playwright_stealth import Stealth
 
 os.environ.pop("HTTP_PROXY", None)
 os.environ.pop("HTTPS_PROXY", None)
@@ -301,24 +303,28 @@ session = requests.Session()
 def log(msg):
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}", flush=True)
 
-def update_cookies_and_tokens(save_state_path="playwright_storage.json"):
-    ENCAR_PAGE = "https://www.encar.com/dc/dc_carsearchlist.do?carType=kor"
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=False,
-            args=[
-                "--disable-gpu",
-                "--no-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-setuid-sandbox",
-                "--disable-infobars",
-                "--window-size=1280,800",
-                "--disable-blink-features=AutomationControlled",
-            ]
-        )
+async def update_cookies_and_tokens(save_state_path="playwright_storage.json"):
+    ENCAR_PAGE = "https://www.encar.com"
 
-        context = browser.new_context(
+    async with Stealth().use_async(async_playwright()) as p:
+        browser = await p.chromium.launch(headless=True,
+                                          args=[
+                                              "--no-sandbox",
+                                              "--disable-dev-shm-usage",
+                                              "--disable-setuid-sandbox",
+                                              "--disable-infobars",
+                                              "--window-size=1280,800",
+                                              "--disable-blink-features=AutomationControlled",
+                                              "--start-maximized",
+                                              "--hide-scrollbars",
+                                              "--mute-audio",
+                                              "--disable-web-security",
+                                              "--disable-features=IsolateOrigins,site-per-process"
+                                          ]
+                                          )
+
+        context = await browser.new_context(
             viewport={"width": 1280, "height": 800},
             user_agent=(
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -326,84 +332,61 @@ def update_cookies_and_tokens(save_state_path="playwright_storage.json"):
                 "Chrome/140.0.0.0 Safari/537.36"
             ),
             locale="ko-KR",
-            java_script_enabled=True
+            java_script_enabled=True,
+            device_scale_factor=1,
+            is_mobile=False,
+            has_touch=False
         )
 
-        # Маскировка Playwright
-        context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-
-        page = context.new_page()
-        print("[playwright] Навигация на страницу...")
+        page = await context.new_page()
+        print("[stealth] Навигация на страницу...")
 
         try:
-            page.goto(ENCAR_PAGE, wait_until="networkidle", timeout=60000)
+            await page.goto(ENCAR_PAGE, wait_until="networkidle", timeout=15000)
         except Exception:
-            print("[playwright] Warning: networkidle timeout; пробуем ждать body")
+            print("[stealth] Warning: networkidle timeout; пробуем ждать body")
 
         try:
-            page.wait_for_selector("body", timeout=10000)
+            await page.wait_for_selector("body", timeout=10000)
         except Exception:
-            print("[playwright] Warning: selector wait timed out")
+            print("[stealth] Warning: selector wait timed out")
 
         # Имитация действий
-        page.mouse.move(200, 300)
-        page.mouse.click(200, 300)
-        page.keyboard.press("PageDown")
-        page.keyboard.press("ArrowDown")
-        page.wait_for_timeout(3000)
-
-        # Проверка WebGL (опционально)
-        try:
-            page.evaluate("""
-                () => {
-                    const canvas = document.createElement('canvas');
-                    const gl = canvas.getContext('webgl');
-                    if (!gl) console.log('WebGL not supported');
-                }
-            """)
-        except Exception:
-            print("[playwright] WebGL check failed")
+        await page.mouse.move(300, 400)
+        await page.mouse.click(300, 400)
+        await page.keyboard.press("PageDown")
+        await page.keyboard.press("ArrowDown")
+        await page.wait_for_timeout(3000)
 
         # Получение cookies
-        cookies_list = context.cookies()
+        cookies_list = await context.cookies()
         cookies_dict = {c["name"]: c["value"] for c in cookies_list}
-        print("[playwright] Получено cookies:")
+        print("[stealth] Получено cookies:")
         for k, v in cookies_dict.items():
             print(f"  {k} = {v}")
 
-        # Обновление requests.Session
-        jar = requests.cookies.RequestsCookieJar()
-        for cookie in cookies_list:
-            jar.set(
-                name=cookie["name"],
-                value=cookie["value"],
-                domain=cookie.get("domain", "www.encar.com"),
-                path=cookie.get("path", "/")
-            )
-        session.cookies.update(jar)
-
         # Получение localStorage и sessionStorage
         try:
-            local_raw = page.evaluate("() => JSON.stringify({...localStorage})")
-            session_raw = page.evaluate("() => JSON.stringify({...sessionStorage})")
+            local_raw = await page.evaluate("() => JSON.stringify({...localStorage})")
+            session_raw = await page.evaluate("() => JSON.stringify({...sessionStorage})")
             local = json.loads(local_raw) if local_raw else {}
             session_storage = json.loads(session_raw) if session_raw else {}
         except Exception as e:
-            print("[playwright] Ошибка чтения storages:", e)
+            print("[stealth] Ошибка чтения storages:", e)
             local = {}
             session_storage = {}
 
-        print("[playwright] localStorage keys:", list(local.keys()))
-        print("[playwright] sessionStorage keys:", list(session_storage.keys()))
+        print("[stealth] localStorage keys:", list(local.keys()))
+        print("[stealth] sessionStorage keys:", list(session_storage.keys()))
 
         # Сохранение состояния
         try:
-            context.storage_state(path=save_state_path)
-            print(f"[playwright] storage_state сохранён в {save_state_path}")
+            await context.storage_state(path=save_state_path)
+            print(f"[stealth] storage_state сохранён в {save_state_path}")
         except Exception as e:
-            print("[playwright] Не удалось сохранить storage_state:", e)
+            print("[stealth] Не удалось сохранить storage_state:", e)
 
-        browser.close()
+        await browser.close()
 
         return {
             "cookies_list": cookies_list,
@@ -538,7 +521,7 @@ def initialize_app():
     log("Все прокси были отключены.")
 
 
-    update_cookies_and_tokens()
+    asyncio.run(update_cookies_and_tokens())
     log("Обновления курса")
     rate = get_exchange_rates()
     threading.Thread(target=rates_refresher, daemon=True).start()
