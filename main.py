@@ -311,15 +311,15 @@ async def update_cookies_and_tokens(save_state_path="playwright_storage.json"):
         browser = await p.chromium.launch(headless=True,
                                           args=[
                                               "--no-sandbox",
-                                              "--disable-dev-shm-usage",
-                                              "--disable-setuid-sandbox",
-                                              "--disable-infobars",
+                                              # "--disable-dev-shm-usage",
+                                              # "--disable-setuid-sandbox",
+                                              # "--disable-infobars",
                                               "--window-size=1280,800",
-                                              "--disable-blink-features=AutomationControlled",
-                                              "--disable-web-security",
-                                              "--disable-features=IsolateOrigins,site-per-process",
-                                              "--disable-gpu",
-                                              "--use-gl=swiftshader"
+                                              # "--disable-blink-features=AutomationControlled",
+                                              # "--disable-web-security",
+                                              # "--disable-features=IsolateOrigins,site-per-process",
+                                              # "--disable-gpu",
+                                              # "--use-gl=swiftshader"
                                           ]
                                           )
 
