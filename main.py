@@ -308,7 +308,7 @@ async def update_cookies_and_tokens(save_state_path="playwright_storage.json"):
     ENCAR_PAGE = "https://www.encar.com"
 
     async with Stealth().use_async(async_playwright()) as p:
-        browser = await p.chromium.launch(headless=True,
+        browser = await p.chromium.launch(headless=False,
                                           args=[
                                               "--no-sandbox",
                                               "--disable-dev-shm-usage",
@@ -342,9 +342,9 @@ async def update_cookies_and_tokens(save_state_path="playwright_storage.json"):
         print("[stealth] Навигация на страницу...")
 
         try:
-            await page.goto(ENCAR_PAGE, wait_until="networkidle", timeout=15000)
+            await page.goto(ENCAR_PAGE, timeout=15000)
         except Exception:
-            print("[stealth] Warning: networkidle timeout; пробуем ждать body")
+            print("Something went wrong while connecting to Encar..")
 
         try:
             await page.wait_for_selector("body", timeout=10000)
