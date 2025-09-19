@@ -308,7 +308,7 @@ async def update_cookies_and_tokens(save_state_path="playwright_storage.json"):
     ENCAR_PAGE = "https://www.encar.com"
 
     async with Stealth().use_async(async_playwright()) as p:
-        browser = await p.chromium.launch(headless=False,
+        browser = await p.chromium.launch(headless=True,
                                           args=[
                                               "--no-sandbox",
                                               "--disable-dev-shm-usage",
@@ -316,11 +316,10 @@ async def update_cookies_and_tokens(save_state_path="playwright_storage.json"):
                                               "--disable-infobars",
                                               "--window-size=1280,800",
                                               "--disable-blink-features=AutomationControlled",
-                                              "--start-maximized",
-                                              "--hide-scrollbars",
-                                              "--mute-audio",
                                               "--disable-web-security",
-                                              "--disable-features=IsolateOrigins,site-per-process"
+                                              "--disable-features=IsolateOrigins,site-per-process",
+                                              "--disable-gpu",
+                                              "--use-gl=swiftshader"
                                           ]
                                           )
 
