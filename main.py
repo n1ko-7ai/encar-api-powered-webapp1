@@ -304,24 +304,28 @@ def log(msg):
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}", flush=True)
 
 
-async def update_cookies_and_tokens(save_state_path="playwright_storage.json"):
+async def update_cookies_and_tokens(save_state_path="/tmp/playwright_storage.json"):
     ENCAR_PAGE = "https://www.encar.com"
+    start_time = time.time()
+    print(f"[{time.strftime('%H:%M:%S')}] ▶️ Старт функции update_cookies_and_tokens")
 
     async with Stealth().use_async(async_playwright()) as p:
-        browser = await p.chromium.launch(headless=True,
-                                          args=[
-                                              "--no-sandbox",
-                                              # "--disable-dev-shm-usage",
-                                              # "--disable-setuid-sandbox",
-                                              # "--disable-infobars",
-                                              "--window-size=1280,800",
-                                              # "--disable-blink-features=AutomationControlled",
-                                              # "--disable-web-security",
-                                              # "--disable-features=IsolateOrigins,site-per-process",
-                                              # "--disable-gpu",
-                                              # "--use-gl=swiftshader"
-                                          ]
-                                          )
+        print(f"[{time.strftime('%H:%M:%S')}] 🧠 Инициализация браузера")
+        browser = await p.chromium.launch(
+            headless=True,
+            args=[
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-setuid-sandbox",
+                "--disable-infobars",
+                "--window-size=1280,800",
+                "--disable-blink-features=AutomationControlled",
+                "--disable-web-security",
+                "--disable-features=IsolateOrigins,site-per-process",
+                "--disable-gpu",
+                "--use-gl=swiftshader"
+            ]
+        )
 
         context = await browser.new_context(
             viewport={"width": 1280, "height": 800},
@@ -331,61 +335,64 @@ async def update_cookies_and_tokens(save_state_path="playwright_storage.json"):
                 "Chrome/140.0.0.0 Safari/537.36"
             ),
             locale="ko-KR",
-            java_script_enabled=True,
-            device_scale_factor=1,
-            is_mobile=False,
-            has_touch=False
+            java_script_enabled=True
         )
 
         page = await context.new_page()
-        print("[stealth] Навигация на страницу...")
+        print(f"[{time.strftime('%H:%M:%S')}] 🌐 Навигация на {ENCAR_PAGE}")
 
         try:
-            await page.goto(ENCAR_PAGE, timeout=15000)
-        except Exception:
-            print("Something went wrong while connecting to Encar..")
+            await page.goto(ENCAR_PAGE, wait_until="domcontentloaded", timeout=20000)
+            print(f"[{time.strftime('%H:%M:%S')}] ✅ Страница загружена (DOMContentLoaded)")
+        except Exception as e:
+            print(f"[{time.strftime('%H:%M:%S')}] ❌ Ошибка загрузки страницы: {e}")
+
+        await page.wait_for_timeout(5000)
+        print(f"[{time.strftime('%H:%M:%S')}] ⏳ Ждём 5 секунд перед взаимодействием")
+
+        try:
+            await page.mouse.move(300, 400)
+            await page.mouse.click(300, 400)
+            await page.keyboard.press("PageDown")
+            await page.keyboard.press("ArrowDown")
+            await page.wait_for_timeout(3000)
+            print(f"[{time.strftime('%H:%M:%S')}] 🖱️ Имитация действий завершена")
+        except Exception as e:
+            print(f"[{time.strftime('%H:%M:%S')}] ⚠️ Ошибка при имитации действий: {e}")
 
         try:
             await page.wait_for_selector("body", timeout=10000)
-        except Exception:
-            print("[stealth] Warning: selector wait timed out")
+            print(f"[{time.strftime('%H:%M:%S')}] ✅ Селектор <body> найден")
+        except Exception as e:
+            print(f"[{time.strftime('%H:%M:%S')}] ❌ Селектор <body> не найден: {e}")
 
-        # Имитация действий
-        await page.mouse.move(300, 400)
-        await page.mouse.click(300, 400)
-        await page.keyboard.press("PageDown")
-        await page.keyboard.press("ArrowDown")
-        await page.wait_for_timeout(3000)
-
-        # Получение cookies
         cookies_list = await context.cookies()
         cookies_dict = {c["name"]: c["value"] for c in cookies_list}
-        print("[stealth] Получено cookies:")
+        print(f"[{time.strftime('%H:%M:%S')}] 🍪 Получено {len(cookies_list)} cookies:")
         for k, v in cookies_dict.items():
             print(f"  {k} = {v}")
 
-        # Получение localStorage и sessionStorage
         try:
             local_raw = await page.evaluate("() => JSON.stringify({...localStorage})")
             session_raw = await page.evaluate("() => JSON.stringify({...sessionStorage})")
             local = json.loads(local_raw) if local_raw else {}
             session_storage = json.loads(session_raw) if session_raw else {}
+            print(f"[{time.strftime('%H:%M:%S')}] 📦 localStorage: {list(local.keys())}")
+            print(f"[{time.strftime('%H:%M:%S')}] 📦 sessionStorage: {list(session_storage.keys())}")
         except Exception as e:
-            print("[stealth] Ошибка чтения storages:", e)
+            print(f"[{time.strftime('%H:%M:%S')}] ❌ Ошибка чтения storages: {e}")
             local = {}
             session_storage = {}
 
-        print("[stealth] localStorage keys:", list(local.keys()))
-        print("[stealth] sessionStorage keys:", list(session_storage.keys()))
-
-        # Сохранение состояния
         try:
             await context.storage_state(path=save_state_path)
-            print(f"[stealth] storage_state сохранён в {save_state_path}")
+            print(f"[{time.strftime('%H:%M:%S')}] 💾 storage_state сохранён в {save_state_path}")
         except Exception as e:
-            print("[stealth] Не удалось сохранить storage_state:", e)
+            print(f"[{time.strftime('%H:%M:%S')}] ❌ Не удалось сохранить storage_state: {e}")
 
         await browser.close()
+        print(f"[{time.strftime('%H:%M:%S')}] 🧹 Браузер закрыт")
+        print(f"[{time.strftime('%H:%M:%S')}] ⏱️ Время выполнения: {round(time.time() - start_time, 2)} сек")
 
         return {
             "cookies_list": cookies_list,
