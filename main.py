@@ -10,8 +10,8 @@ import os
 from playwright_stealth import Stealth
 
 proxies = {
-    "http": "http://e1ea26894cee7419:vZ3O7M1R@res.proxy-seller.io:10000",
-    "https": "http://e1ea26894cee7419:vZ3O7M1R@res.proxy-seller.io:10000",
+    "http": "58272ea5b2cac129:QbhuX4Ha@res.proxy-seller.io:10000",
+    "https": "58272ea5b2cac129:QbhuX4Ha@res.proxy-seller.io:10000",
 }
 
 session = requests.Session()
@@ -310,11 +310,11 @@ async def update_cookies_and_tokens():
         browser = await p.chromium.launch(
             headless=True,
             # --- НАСТРОЙКИ ПРОКСИ ---
-            # proxy={
-            #     "server": "http://res.proxy-seller.io:10000",
-            #     "username": "e1ea26894cee7419",
-            #     "password": "vZ3O7M1R"
-            # },
+            proxy={
+                "server": "http://res.proxy-seller.io:10000",
+                "username": "58272ea5b2cac129",
+                "password": "QbhuX4Ha"
+            },
             args=[
                 "--no-sandbox",
                 "--disable-dev-shm-usage",
@@ -469,7 +469,7 @@ def car_list_brand_foreign(car_brand, page):
         response = session.get(
             API_URL,
             timeout=10,
-            # proxies=proxies,
+            proxies=proxies,
             headers=HEADERS
         )
         response.raise_for_status()
@@ -501,7 +501,7 @@ def car_list_brand_foreign(car_brand, page):
                 url,
                 headers=HEADERS,
                 timeout=10,
-                # proxies=proxies,
+                proxies=proxies,
             )
             response.raise_for_status()
             cars_data = response.json()
@@ -639,7 +639,7 @@ def car_list_brand(car_brand, page):
         response = session.get(
             API_URL,
             timeout=10,
-            # proxies=proxies,
+            proxies=proxies,
             headers=HEADERS
         )
         response.raise_for_status()
@@ -671,7 +671,7 @@ def car_list_brand(car_brand, page):
                 url,
                 headers=HEADERS,
                 timeout=10,
-                # proxies=proxies,
+                proxies=proxies,
             )
             response.raise_for_status()
             cars_data = response.json()
@@ -766,7 +766,7 @@ def car_detail(car_id):
             url,
             headers=HEADERS,
             timeout=10,
-            # proxies=proxies,
+            proxies=proxies,
         )
         response.raise_for_status()
         cars_data = response.json()
