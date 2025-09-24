@@ -1,108 +1,101 @@
-<!-- sidebar.html -->
-<nav class="sidebar bg-white border-end vh-100 position-fixed">
-  <div class="p-3 overflow-auto text-center" style="height:100%;">
+<div class="p-3 mb-4 sidebar" style="width: 250px;">
+  <h5 class="mb-3">Фильтры</h5>
 
-    <!-- Hyundai -->
-    <h5 class="fw-bold">
-      <a class="text-decoration-none text-dark d-block"
-         data-bs-toggle="collapse"
-         href="#hyundaiMenu"
-         role="button"
-         aria-expanded="false"
-         aria-controls="hyundaiMenu">
-        Hyundai
-      </a>
-    </h5>
-    <ul class="collapse list-unstyled" id="hyundaiMenu">
-      <li><a href="" class="text-decoration-none d-block">Avante</a></li>
-      <li><a href="" class="text-decoration-none d-block">Sonata</a></li>
-      <li><a href="" class="text-decoration-none d-block">Tucson</a></li>
-    </ul>
+  <form method="get">
 
-    <!-- Kia -->
-    <h5 class="fw-bold mt-4">
-      <a class="text-decoration-none text-dark d-block"
-         data-bs-toggle="collapse"
-         href="#kiaMenu"
-         role="button"
-         aria-expanded="false"
-         aria-controls="kiaMenu">
-        Kia
-      </a>
-    </h5>
-    <ul class="collapse list-unstyled" id="kiaMenu">
-      <li><a href="" class="text-decoration-none d-block">K5</a></li>
-      <li><a href="" class="text-decoration-none d-block">Sorento</a></li>
-      <li><a href="" class="text-decoration-none d-block">Sportage</a></li>
-    </ul>
+    <!-- Фильтр по пробегу -->
+    <div class="mb-3">
+      <label for="mileage-min" class="form-label">Пробег от (km)</label>
+      <select class="form-select" id="mileage-min" name="mileage_min">
+        <option value="" {% if not mileage_min %}selected{% endif %}>Любой</option>
+        {% for n in range(10000, 210000, 10000) %}
+          <option value="{{ n }}" {% if mileage_min and mileage_min|int == n %}selected{% endif %}>{{ n }}</option>
+        {% endfor %}
+      </select>
+    </div>
 
-    <!-- Genesis -->
-    <h5 class="fw-bold mt-4">
-      <a class="text-decoration-none text-dark d-block"
-         data-bs-toggle="collapse"
-         href="#genesisMenu"
-         role="button"
-         aria-expanded="false"
-         aria-controls="genesisMenu">
-        Genesis
-      </a>
-    </h5>
-    <ul class="collapse list-unstyled" id="genesisMenu">
-      <li><a href="" class="text-decoration-none d-block">G70</a></li>
-      <li><a href="" class="text-decoration-none d-block">G80</a></li>
-      <li><a href="" class="text-decoration-none d-block">GV80</a></li>
-    </ul>
+    <div class="mb-3">
+      <label for="mileage-max" class="form-label">Пробег до (km)</label>
+      <select class="form-select" id="mileage-max" name="mileage_max">
+        <option value="" {% if not mileage_max %}selected{% endif %}>Любой</option>
+        {% for n in range(10000, 210000, 10000) %}
+          <option value="{{ n }}" {% if mileage_max and mileage_max|int == n %}selected{% endif %}>{{ n }}</option>
+        {% endfor %}
+      </select>
+    </div>
 
-    <!-- BMW -->
-    <h5 class="fw-bold mt-4">
-      <a class="text-decoration-none text-dark d-block"
-         data-bs-toggle="collapse"
-         href="#bmwMenu"
-         role="button"
-         aria-expanded="false"
-         aria-controls="bmwMenu">
-        BMW
-      </a>
-    </h5>
-    <ul class="collapse list-unstyled" id="bmwMenu">
-      <li><a href="" class="text-decoration-none d-block">3 Series</a></li>
-      <li><a href="" class="text-decoration-none d-block">5 Series</a></li>
-      <li><a href="" class="text-decoration-none d-block">X5</a></li>
-    </ul>
+    <!-- Фильтр по году и месяцу -->
+    <div class="mb-3">
+      <label for="year-from" class="form-label">Год от</label>
+      <select class="form-select" id="year-from" name="year_from">
+        <option value="" {% if not year_from %}selected{% endif %}>Любой</option>
+        {% for year in range(2020, 2023) %}
+          <option value="{{ year }}" {% if year_from and year_from|int == year %}selected{% endif %}>{{ year }}</option>
+        {% endfor %}
+      </select>
+    </div>
 
-    <!-- Mercedes-Benz -->
-    <h5 class="fw-bold mt-4">
-      <a class="text-decoration-none text-dark d-block"
-         data-bs-toggle="collapse"
-         href="#mercedesMenu"
-         role="button"
-         aria-expanded="false"
-         aria-controls="mercedesMenu">
-        Mercedes-Benz
-      </a>
-    </h5>
-    <ul class="collapse list-unstyled" id="mercedesMenu">
-      <li><a href="" class="text-decoration-none d-block">C-Class</a></li>
-      <li><a href="" class="text-decoration-none d-block">E-Class</a></li>
-      <li><a href="" class="text-decoration-none d-block">GLC</a></li>
-    </ul>
+    <div class="mb-3">
+      <label for="month-from" class="form-label">Месяц от</label>
+      <select class="form-select" id="month-from" name="month_from">
+        <option value="" {% if not month_from %}selected{% endif %}>Любой</option>
+        {% for month in range(1, 13) %}
+          <option value="{{ month }}" {% if month_from and month_from|int == month %}selected{% endif %}>{{ month }}</option>
+        {% endfor %}
+      </select>
+    </div>
 
-    <!-- Audi -->
-    <h5 class="fw-bold mt-4">
-      <a class="text-decoration-none text-dark d-block"
-         data-bs-toggle="collapse"
-         href="#audiMenu"
-         role="button"
-         aria-expanded="false"
-         aria-controls="audiMenu">
-        Audi
-      </a>
-    </h5>
-    <ul class="collapse list-unstyled" id="audiMenu">
-      <li><a href="" class="text-decoration-none d-block">A4</a></li>
-      <li><a href="" class="text-decoration-none d-block">A6</a></li>
-      <li><a href="" class="text-decoration-none d-block">Q7</a></li>
-    </ul>
+    <div class="mb-3">
+      <label for="year-to" class="form-label">Год до</label>
+      <select class="form-select" id="year-to" name="year_to">
+        <option value="" {% if not year_to %}selected{% endif %}>Любой</option>
+        {% for year in range(2020, 2023) %}
+          <option value="{{ year }}" {% if year_to and year_to|int == year %}selected{% endif %}>{{ year }}</option>
+        {% endfor %}
+      </select>
+    </div>
 
-  </div>
-</nav>
+    <div class="mb-3">
+      <label for="month-to" class="form-label">Месяц до</label>
+      <select class="form-select" id="month-to" name="month_to">
+        <option value="" {% if not month_to %}selected{% endif %}>Любой</option>
+        {% for month in range(1, 13) %}
+          <option value="{{ month }}" {% if month_to and month_to|int == month %}selected{% endif %}>{{ month }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Фильтр по модели -->
+    <div class="mb-3">
+      <label for="model-select" class="form-label">Модель</label>
+      <select class="form-select" id="model-select" name="model">
+        <option value="" {% if not model %}selected{% endif %}>Все модели</option>
+        {% if cars %}
+          {% if cars[0]['Manufacturer_eng'] == 'Hyundai' %}
+            <option value="쏘나타" {% if model == "쏘나타" %}selected{% endif %}>Sonata</option>
+            <option value="아반떼" {% if model == "아반떼" %}selected{% endif %}>Avante</option>
+            <option value="투싼" {% if model == "투싼" %}selected{% endif %}>Tucson</option>
+            <option value="그랜저" {% if model == "그랜저" %}selected{% endif %}>Grandeur</option>
+            <option value="싼타페" {% if model == "싼타페" %}selected{% endif %}>Santa-fe</option>
+            <option value="스타렉스" {% if model == "스타렉스" %}selected{% endif %}>Starex</option>
+          {% elif cars[0]['Manufacturer_eng'] == 'Kia' %}
+            <option value="K5" {% if model == "K5" %}selected{% endif %}>K5</option>
+            <option value="K7" {% if model == "K7" %}selected{% endif %}>K7</option>
+            <option value="카니발" {% if model == "카니발" %}selected{% endif %}>Carnival</option>
+            <option value="쏘렌토" {% if model == "쏘렌토" %}selected{% endif %}>Sorento</option>
+            <option value="스포티지" {% if model == "스포티지" %}selected{% endif %}>Sportage</option>
+            <option value="모닝" {% if model == "모닝" %}selected{% endif %}>Morning</option>
+          {% elif cars[0]['Manufacturer_eng'] == 'Genesis' %}
+            <option value="EQ900" {% if model == "EQ900" %}selected{% endif %}>EQ900</option>
+            <option value="G70" {% if model == "G70" %}selected{% endif %}>G70</option>
+            <option value="G80" {% if model == "G80" %}selected{% endif %}>G80</option>
+            <option value="G90" {% if model == "G90" %}selected{% endif %}>G90</option>
+          {% endif %}
+        {% endif %}
+      </select>
+    </div>
+
+
+    <button type="submit" class="btn btn-danger w-100">Применить фильтры</button>
+  </form>
+</div>

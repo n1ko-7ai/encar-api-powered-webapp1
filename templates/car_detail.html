@@ -2,27 +2,146 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>차량 상세정보</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ car.Manufacturer_eng }} {{ car.Model_eng }} {{ car.grade_eng }}</title>
+
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    body {
+      background-color: #f8f9fa;
+    }
+
+    .car-container {
+      max-width: 1000px;
+      margin: 30px auto;
+      padding: 0 15px;
+    }
+
+    .carousel,
+    .carousel-item img {
+      width: 100%;
+      height: auto;
+      max-height: 500px;
+      object-fit: cover;
+      border-radius: 10px;
+    }
+
+    .car-info-card {
+      margin-top: 20px;
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .car-info-card h2 {
+      font-weight: 600;
+      margin-bottom: 20px;
+      font-size: 1.8rem;
+      text-align: center;
+    }
+
+    .car-info-card .list-group-item {
+      font-size: 1rem;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    @media (max-width: 576px) {
+      .car-info-card h2 {
+        font-size: 1.4rem;
+      }
+      .car-info-card .list-group-item {
+        font-size: 0.9rem;
+      }
+    }
+  </style>
 </head>
-<body class="bg-light">
+<body>
 
-<div class="container py-5">
-  <a href="{{ url_for('index') }}" class="btn btn-secondary mb-3">← 목록으로</a>
-  <h1 class="mb-4">차량 상세정보</h1>
+  {% include 'header.html' %}
 
-  <ul class="list-group">
-    <li class="list-group-item"><strong>종류:</strong> {{ car.get('type', '-') }}</li>
-    <li class="list-group-item"><strong>주행거리:</strong> {{ car.get('mileage', '-') }} km</li>
-    <li class="list-group-item"><strong>배기량:</strong> {{ car.get('displacement', '-') }} cc</li>
-    <li class="list-group-item"><strong>변속기:</strong> {{ car.get('transmissionName', '-') }}</li>
-    <li class="list-group-item"><strong>연료:</strong> {{ car.get('fuelName', '-') }}</li>
-    <li class="list-group-item"><strong>색상:</strong> {{ car.get('colorName', '-') }}</li>
-    <li class="list-group-item"><strong>맞춤 색상:</strong> {{ car.get('customColor', '-') }}</li>
-    <li class="list-group-item"><strong>좌석 수:</strong> {{ car.get('seatCount', '-') }}</li>
-    <li class="list-group-item"><strong>차체:</strong> {{ car.get('bodyName', '-') }}</li>
-  </ul>
-</div>
+  <br><br><br>
 
+  <div class="car-container">
+    <!-- Галерея -->
+    {% if car.photos %}
+    <div id="carCarousel" class="carousel slide mb-4" data-bs-ride="carousel">
+      <div class="carousel-inner">
+        {% for photo in car.photos %}
+        <div class="carousel-item {% if loop.index0 == 0 %}active{% endif %}">
+          <img src="{{ photo }}" alt="Car photo">
+        </div>
+        {% endfor %}
+      </div>
+      <button class="carousel-control-prev" type="button" data-bs-target="#carCarousel" data-bs-slide="prev">
+        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Previous</span>
+      </button>
+      <button class="carousel-control-next" type="button" data-bs-target="#carCarousel" data-bs-slide="next">
+        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Next</span>
+      </button>
+    </div>
+    {% else %}
+      <img src="{{ url_for('static', filename='no_image.png') }}" class="img-fluid mb-4" alt="No image" style="border-radius:10px;">
+    {% endif %}
+
+      <div class="car-info-card">
+    <h2>{{ car.Manufacturer_eng }} {{ car.Model_eng }} {{ car.grade_eng }}</h2>
+    <ul class="list-group list-group-flush">
+      <li class="list-group-item">
+        <i class="fa-solid fa-money-bill-wave me-2"></i>
+        <strong>Цена: </strong>
+        <span> {{ car.Price_RUB }} RUB</span>
+      </li>
+      <li class="list-group-item">
+        <i class="fa-solid fa-car me-2"></i>
+        <strong>Объем двигателя: </strong>
+        <span> {{ car.Displacement }} cc</span>
+      </li>
+      <li class="list-group-item">
+        <i class="fa-solid fa-tachometer-alt me-2"></i>
+        <strong>Пробег: </strong>
+        <span> {{ car.Mileage }} км</span>
+      </li>
+      <li class="list-group-item">
+        <i class="fa-solid fa-calendar-alt me-2"></i>
+        <strong>Год/Месяц: </strong>
+        <span> {{ car.YearMonth or '-' }}</span>
+      </li>
+    </ul>
+  </div>
+
+    <div class="car-info-card">
+    <h2 class="fa-solid fa-circle-info"> Стоимость растаможки автомобиля </h2>
+    <ul class="list-group list-group-flush">
+      <li class="list-group-item">
+        <i class="me-2"></i>
+        <strong>Импортная пошлина: </strong>
+        <span> {{ calc_data["Импортная пошлина"] }} RUB</span>
+      </li>
+      <li class="list-group-item">
+        <i class="me-2"></i>
+        <strong>Таможенные сборы: </strong>
+        <span> {{ calc_data["Таможенные сборы"] }} RUB</span>
+      </li>
+      <li class="list-group-item">
+        <i class="me-2"></i>
+        <strong>Утилизационный сбор: </strong>
+        <span> {{ calc_data["Утилизационный сбор"] }} RUB</span>
+      </li>
+      <li class="list-group-item">
+        <i class="me-2"></i>
+        <strong>Общий результат расчетов: </strong>
+        <span> {{ calc_data["Результат расчетов (ИТУ)"] }} RUB</span>
+      </li>
+    </ul>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

@@ -1,7 +1,26 @@
 body {
     font-family: Arial, sans-serif;
 }
+
+.sidebar {
+  position: fixed;
+  top: 80px; /* чтобы не перекрывать хедер */
+  left: 20px;
+  z-index: 1000;
+}
+
+
 .card-title {
     font-size: 1.1rem;
     font-weight: bold;
+}
+
+.main-content {
+  margin-top: 70px;
+  margin-left: 0; /* по умолчанию контент на всю ширину */
+  transition: margin-left 0.3s ease;
+}
+
+.main-content.shift {
+  margin-left: 250px; /* сдвигаем при открытом сайдбаре */
 }

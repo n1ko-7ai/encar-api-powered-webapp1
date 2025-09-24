@@ -2,24 +2,19 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1"> <!-- Важно для мобильной адаптации -->
   <title>Encar Cars</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <style>
-    .sidebar {
-      width: 250px; /* ширина сайдбара */
-      top: 0;
-      left: 0;
-      z-index: 1000;
-    }
-
-    .main-content {
-      margin-left: 250px; /* отступ равен ширине сайдбара */
-    }
-
     .card-img-top {
       height: 200px;
       object-fit: cover;
+    }
+    @media (max-width: 576px) {
+      .card-img-top {
+        height: 150px;
+      }
     }
     .card-title {
       font-size: 1.1rem;
@@ -38,58 +33,92 @@
 </head>
 <body class="bg-light">
 
-  <!-- Header -->
   {% include 'header.html' %}
 
-  {% include 'sidebar.html' %}
+  <br><br><br>
 
-  <div class="container py-5 main-content">
-    <h1 class="mb-4 text-center">Каталог машин Encar по фильтру: {{ cars[0]['Manufacturer_eng'] }}</h1>
-
-    <div class="row">
-      {% for car in cars %}
-      <div class="col-md-6 col-lg-4 mb-4">
-        <a href="{{ url_for('car_detail', car_id=car['Id']) }}" class="text-decoration-none text-dark">
-          <div class="card shadow-sm h-100">
-            {% if car['Photos'] %}
-            <img src="https://ci.encar.com/carpicture{{ car['Photos'][0]['location'] }}" class="card-img-top" alt="{{ car['Model_eng'] }}">
-            {% else %}
-            <img src="{{ url_for('static', filename='no_image.png') }}" class="card-img-top" alt="No image">
-            {% endif %}
-            <div class="card-body">
-              <h5 class="card-title">{{ car['Manufacturer_eng'] }} {{ car['Model_eng'] }} {{ car['grade_eng'] }}</h5>
-              <p class="card-text">ID: {{ car['Id'] }}</p>
-              <p class="card-text">Цена: {{ car['Price_RUB'] }} RUB</p>
-              <p class="card-text">Пробег: {{ "{:,}".format(car['Mileage']) }} km</p>
-              <p class="card-text">Год: {{ car['FormYear'] }}</p>
-            </div>
-          </div>
-        </a>
+  <div class="container-fluid py-3">
+    <div class="row gx-4">
+      <!-- Sidebar -->
+      <div class="col-12 col-md-3 mb-4 mb-md-0">
+        {% include 'sidebar.html' %}
       </div>
-      {% endfor %}
+
+      <!-- Main content -->
+      <div class="col-12 col-md-9" style="padding-right: 25px">
+        <h1 class="mb-4 text-center">Каталог машин Encar по фильтру: {{ cars[0]['Manufacturer_eng'] }}</h1>
+
+        <div class="row g-4">
+          {% for car in cars %}
+          <div class="col-12 col-sm-6 col-lg-4">
+            <a href="{{ url_for('car_detail', car_id=car['Id']) }}" class="text-decoration-none text-dark">
+              <div class="card shadow-sm h-100">
+                {% if car['Photos'] %}
+                <img src="https://ci.encar.com/carpicture{{ car['Photos'][0]['location'] }}" class="card-img-top" alt="{{ car['Model_eng'] }}">
+                {% else %}
+                <img src="{{ url_for('static', filename='no_image.png') }}" class="card-img-top" alt="No image">
+                {% endif %}
+                <div class="card-body">
+                  <h5 class="card-title">{{ car['Manufacturer_eng'] }} {{ car['Model_eng'] }} {{ car['grade_eng'] }}</h5>
+                  <p class="card-text">ID: {{ car['Id'] }}</p>
+                  <p class="card-text">Цена: {{ car['Price_RUB'] }} RUB</p>
+                  <p class="card-text">Пробег: {{ "{:,}".format(car['Mileage']) }} km</p>
+                  <p class="card-text">Год: {{ car['YearMonth'] }}</p>
+                </div>
+              </div>
+            </a>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Пагинация -->
+        <nav aria-label="Page navigation">
+          <ul class="pagination justify-content-center flex-wrap mt-4">
+            <li class="page-item {% if not prev_url %}disabled{% endif %}">
+              <a class="page-link" href="{{ prev_url }}" aria-label="Previous">&laquo; Назад</a>
+            </li>
+            <li class="page-item {% if not next_url %}disabled{% endif %}">
+              <a class="page-link" href="{{ next_url }}" aria-label="Next">Вперед &raquo;</a>
+            </li>
+          </ul>
+        </nav>
+      </div>
     </div>
   </div>
 
-    <!-- Пагинация -->
-  <nav aria-label="Page navigation">
-    <ul class="pagination justify-content-center mt-4">
-      <!-- Кнопка "Назад" -->
-      <li class="page-item {% if page == 1 %}disabled{% endif %}">
-        <a class="page-link" href="{{ page - 1 }}" aria-label="Previous">
-          &laquo; Назад
-        </a>
-      </li>
+  <script>
+  document.getElementById('apply-filters').addEventListener('click', function () {
+    const carBrand = "{{ cars[0]['Manufacturer'] }}";
+    const mileageMin = document.getElementById('mileage-min').value;
+    const mileageMax = document.getElementById('mileage-max').value;
+    const yearFrom = document.getElementById('year-from').value;
+    const yearTo = document.getElementById('year-to').value;
+    const monthFrom = document.getElementById('month-from').value;
+    const monthTo = document.getElementById('month-to').value;
+    const model = document.getElementById('model-select').value;
 
-      <!-- Кнопка "Вперед" -->
-      <li class="page-item {% if page == total_pages %}disabled{% endif %}">
-        <a class="page-link" href="{{ page + 1 }}" aria-label="Next">
-          Вперед &raquo;
-        </a>
-      </li>
-    </ul>
-  </nav>
+    // базовый путь
+    let url = `/car-list/${encodeURIComponent(carBrand)}/1`;
+
+    // query-параметры
+    const params = new URLSearchParams();
+    if (model) params.append('model', model);
+    if (mileageMin) params.append('mileage_min', mileageMin);
+    if (mileageMax) params.append('mileage_max', mileageMax);
+    if (yearFrom) params.append('year_from', yearFrom);
+    if (yearTo) params.append('year_to', yearTo);
+    if (monthFrom) params.append('month_from', monthFrom);
+    if (monthTo) params.append('month_to', monthTo);
+
+    if ([...params].length > 0) {
+      url += `?${params.toString()}`;
+    }
+
+    window.location.href = url;
+  });
+</script>
 
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

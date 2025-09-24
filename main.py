@@ -1,4 +1,6 @@
-from flask import Flask, render_template
+from calendar import month
+
+from flask import Flask, render_template, request, url_for
 import requests, json, threading, time
 from playwright.async_api import async_playwright
 import xml.etree.ElementTree as ET
@@ -7,15 +9,12 @@ import asyncio
 import os
 from playwright_stealth import Stealth
 
-os.environ.pop("HTTP_PROXY", None)
-os.environ.pop("HTTPS_PROXY", None)
-os.environ.pop("http_proxy", None)
-os.environ.pop("https_proxy", None)
-
 proxies = {
-  "http": "",
-  "https": "",
+    "http": "http://e1ea26894cee7419:vZ3O7M1R@res.proxy-seller.io:10000",
+    "https": "http://e1ea26894cee7419:vZ3O7M1R@res.proxy-seller.io:10000",
 }
+
+session = requests.Session()
 
 rate = {}
 
@@ -23,7 +22,7 @@ def get_exchange_rates():
     url = "https://www.cbr.ru/scripts/XML_daily.asp"
 
     try:
-        response = requests.get(url, timeout=10)
+        response = session.get(url, timeout=100)
         response.raise_for_status()
     except requests.RequestException as e:
         raise ConnectionError(f"Ошибка при запросе к Центробанку: {e}")
@@ -113,8 +112,7 @@ def calculate_import_duty_new(auto_cost_usd, engine_capacity):
 
     print(value)
 
-    rates = get_exchange_rates()
-    return max(value, convert_currency(engine_capacity * euro, 'EUR', 'USD', rates))
+    return max(value, convert_currency(engine_capacity * euro, 'EUR', 'USD', rate))
 
 # Тут считаются таможенные сборы
 def calculate_customs_fee(amount_rub):
@@ -298,13 +296,11 @@ HEADERS = {
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
 }
 
-session = requests.Session()
-
 def log(msg):
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}", flush=True)
 
 
-async def update_cookies_and_tokens(save_state_path="/tmp/playwright_storage.json"):
+async def update_cookies_and_tokens():
     ENCAR_PAGE = "https://www.encar.com"
     start_time = time.time()
     print(f"[{time.strftime('%H:%M:%S')}] ▶️ Старт функции update_cookies_and_tokens")
@@ -313,6 +309,12 @@ async def update_cookies_and_tokens(save_state_path="/tmp/playwright_storage.jso
         print(f"[{time.strftime('%H:%M:%S')}] 🧠 Инициализация браузера")
         browser = await p.chromium.launch(
             headless=True,
+            # --- НАСТРОЙКИ ПРОКСИ ---
+            # proxy={
+            #     "server": "http://res.proxy-seller.io:10000",
+            #     "username": "e1ea26894cee7419",
+            #     "password": "vZ3O7M1R"
+            # },
             args=[
                 "--no-sandbox",
                 "--disable-dev-shm-usage",
@@ -384,59 +386,102 @@ async def update_cookies_and_tokens(save_state_path="/tmp/playwright_storage.jso
             local = {}
             session_storage = {}
 
-        try:
-            await context.storage_state(path=save_state_path)
-            print(f"[{time.strftime('%H:%M:%S')}] 💾 storage_state сохранён в {save_state_path}")
-        except Exception as e:
-            print(f"[{time.strftime('%H:%M:%S')}] ❌ Не удалось сохранить storage_state: {e}")
-
         await browser.close()
         print(f"[{time.strftime('%H:%M:%S')}] 🧹 Браузер закрыт")
         print(f"[{time.strftime('%H:%M:%S')}] ⏱️ Время выполнения: {round(time.time() - start_time, 2)} сек")
+
+        for c in cookies_list:
+            session.cookies.set(c["name"], c["value"])
 
         return {
             "cookies_list": cookies_list,
             "cookies_dict": cookies_dict,
             "localStorage": local,
             "sessionStorage": session_storage,
-            "saved_state_file": save_state_path
         }
 
-def rates_refresher():
+def parser_refresher():
     while True:
         time.sleep(REFRESH_INTERVAL)
-        log("Фоновое обновление курса")
-        rate = get_exchange_rates()
-        log("Фоновое обновление курса завершено.")
+        log("Фоновое обновление парсера")
+        initialize_app()
+        log("Фоновое обновление парсера завершено.")
+
 
 @app.route("/")
 def index():
-    return "This is main page, but not ready yet" # Пока тут ничего не будет
+    return render_template("index.html")
 
-@app.route("/car-list/<string:car_brand>/<int:page>")
-def car_list(car_brand, page):
-    start = (page - 1) * 8
+@app.route("/car-list-foreign/<string:car_brand>/<int:page>")
+def car_list_brand_foreign(car_brand, page):
+    model = request.args.get("model")
+    mileage_min = request.args.get("mileage_min")
+    mileage_max = request.args.get("mileage_max")
+    year_from = request.args.get("year_from")
+    month_from = request.args.get("month_from")
+    year_to = request.args.get("year_to")
+    month_to = request.args.get("month_to")
 
-    API_URL = (
-        f"https://api.encar.com/search/car/list/premium?count=true&q=(And.Hidden.N._.(C.CarType.Y._.Manufacturer.{car_brand}.)_.Year.range(202012..202210).)&sr=%7CModifiedDate%7C{start}%7C8"
-    )
+    mileage_min = int(mileage_min) if mileage_min else 0
+    mileage_max = int(mileage_max) if mileage_max else 200000
+    year_from = int(year_from) if year_from else 2020
+    year_to = int(year_to) if year_to else 2022
+    month_from = int(month_from) if month_from else "01"
+    month_to = int(month_to) if month_to else "12"
+
+    month_list = [
+        1, 2, 3, 4, 5, 6, 7, 8, 9
+    ]
+
+    if month_from in month_list:
+        month_from = "0" + str(month_from)
+    else:
+        month_from = str(month_from)
+
+    if month_to in month_list:
+        month_to = "0" + str(month_to)
+    else:
+        month_to = str(month_to)
+
+    if mileage_min >= mileage_max:
+        mileage_min = mileage_max
+
+    if year_from > year_to:
+        year_from = year_to
+
+    if year_from == year_to and month_from >= month_to:
+        month_from = month_to
+
+    start = (page - 1) * 20
+
+    total_pages = 0
+
+    API_URL = ""
+
+    if not model:
+        API_URL = f"https://api.encar.com/search/car/list/premium?count=true&q=(And.Hidden.N._.Year.range({year_from}{month_from}..{year_to}{month_to})._.Mileage.range({mileage_min}..{mileage_max})._.(C.CarType.N._.Manufacturer.{car_brand}.))&sr=%7CModifiedDate%7C{start}%7C20"
+    else:
+        API_URL = f"https://api.encar.com/search/car/list/premium?count=true&q=(And.Hidden.N._.Year.range({year_from}{month_from}..{year_to}{month_to})._.Mileage.range({mileage_min}..{mileage_max})._.(C.CarType.N._.(C.Manufacturer.{car_brand}._.ModelGroup.{model}.)))&sr=%7CModifiedDate%7C{start}%7C20"
 
     try:
-        log(f"Используется прокси: {proxies}")
+        # log(f"Используется прокси: {proxies}")
         log(f"Куки: {session.cookies}")
         response = session.get(
             API_URL,
             timeout=10,
-            proxies=proxies,
+            # proxies=proxies,
             headers=HEADERS
         )
         response.raise_for_status()
         data = response.json()
         cars = data.get("SearchResults", [])
+        total_cars = data.get("Count", 0)
+        per_page = 20
+        total_pages = (total_cars + per_page - 1) // per_page
 
         if not cars:
             log("WARNING: Не удалось получить данные от Encar: SearchResults пуст")
-            return "Не удалось получить данные от Encar"
+            return render_template("car_not_found.html")
 
         log(f"Обновлены курсы валют: {rate}")
 
@@ -451,12 +496,12 @@ def car_list(car_brand, page):
         log(url)
 
         try:
-            log(f"Используется прокси: {proxies}")
+            # log(f"Используется прокси: {proxies}")
             response = session.get(
                 url,
                 headers=HEADERS,
                 timeout=10,
-                proxies=proxies,
+                # proxies=proxies,
             )
             response.raise_for_status()
             cars_data = response.json()
@@ -495,6 +540,10 @@ def car_list(car_brand, page):
                     continue
 
                 category = car_data.get('category', {})
+                yearMonth_str = category.get("yearMonth")
+                formatted = f"{yearMonth_str[:4]}/{yearMonth_str[4:]}"
+                car["YearMonth"] = formatted
+                car["Manufacturer"] = category.get("manufacturerName")
                 car["Manufacturer_eng"] = category.get("manufacturerEnglishName")
                 car["Model_eng"] = category.get("modelGroupEnglishName")
                 car["grade_eng"] = category.get("gradeEnglishName")
@@ -503,36 +552,286 @@ def car_list(car_brand, page):
                 price_rub = convert_currency(price * 1000, "KRW", "RUB", rate)
                 car["Price_RUB"] = value_converter(price_rub)
 
-                log(car)
-
         except Exception as e:
             log(f"Ошибка при получении батч-данных авто: {e}")
+            return f"Вы получили ошибку батча-данных авто {e}. Возможно ведуться технические работы!"
 
     except Exception as e:
         log(f"Ошибка запроса API: {e}")
-        cars = []
+        return f"Вы получили ошибку запроса API {e}. Возможно ведуться технические работы!"
 
-    return render_template("car_list.html", cars=cars, car_brand=car_brand, page=page)
+    query_args = request.args.to_dict()
+
+    prev_url = url_for("car_list_brand_foreign", car_brand=car_brand, page=page - 1, **query_args) if page > 1 else None
+    next_url = url_for("car_list_brand_foreign", car_brand=car_brand, page=page + 1, **query_args) if page < total_pages else None
+
+    return render_template(
+        "car_list.html",
+        cars=cars,
+        car_brand=car_brand,
+        page=page,
+        total_pages=total_pages,
+        next_url=next_url,
+        prev_url=prev_url,
+        model=model,
+        month_from=month_from,
+        month_to=month_to,
+        year_from=year_from,
+        year_to=year_to,
+        mileage_min=mileage_min,
+        mileage_max=mileage_max
+    )
+
+@app.route("/car-list/<string:car_brand>/<int:page>")
+def car_list_brand(car_brand, page):
+    model = request.args.get("model")
+    mileage_min = request.args.get("mileage_min")
+    mileage_max = request.args.get("mileage_max")
+    year_from = request.args.get("year_from")
+    month_from = request.args.get("month_from")
+    year_to = request.args.get("year_to")
+    month_to = request.args.get("month_to")
+
+    mileage_min = int(mileage_min) if mileage_min else 0
+    mileage_max = int(mileage_max) if mileage_max else 200000
+    year_from = int(year_from) if year_from else 2020
+    year_to = int(year_to) if year_to else 2022
+    month_from = int(month_from) if month_from else "01"
+    month_to = int(month_to) if month_to else "12"
+
+    month_list = [
+        1, 2, 3, 4, 5, 6, 7, 8, 9
+    ]
+
+    if month_from in month_list:
+        month_from = "0" + str(month_from)
+    else:
+        month_from = str(month_from)
+
+    if month_to in month_list:
+        month_to = "0" + str(month_to)
+    else:
+        month_to = str(month_to)
+
+    if mileage_min >= mileage_max:
+        mileage_min = mileage_max
+
+    if year_from > year_to:
+        year_from = year_to
+
+    if year_from == year_to and month_from >= month_to:
+        month_from = month_to
+
+    start = (page - 1) * 20
+
+    total_pages = 0
+
+    API_URL = ""
+
+    if not model:
+        API_URL = f"https://api.encar.com/search/car/list/premium?count=true&q=(And.Hidden.N._.Year.range({year_from}{month_from}..{year_to}{month_to})._.Mileage.range({mileage_min}..{mileage_max})._.(C.CarType.Y._.Manufacturer.{car_brand}.))&sr=%7CModifiedDate%7C{start}%7C20"
+    else:
+        API_URL = f"https://api.encar.com/search/car/list/premium?count=true&q=(And.Hidden.N._.Year.range({year_from}{month_from}..{year_to}{month_to})._.Mileage.range({mileage_min}..{mileage_max})._.(C.CarType.Y._.(C.Manufacturer.{car_brand}._.ModelGroup.{model}.)))&sr=%7CModifiedDate%7C{start}%7C20"
+
+    try:
+        # log(f"Используется прокси: {proxies}")
+        log(f"Куки: {session.cookies}")
+        response = session.get(
+            API_URL,
+            timeout=10,
+            # proxies=proxies,
+            headers=HEADERS
+        )
+        response.raise_for_status()
+        data = response.json()
+        cars = data.get("SearchResults", [])
+        total_cars = data.get("Count", 0)
+        per_page = 20
+        total_pages = (total_cars + per_page - 1) // per_page
+
+        if not cars:
+            log("WARNING: Не удалось получить данные от Encar: SearchResults пуст")
+            return render_template("car_not_found.html")
+
+        log(f"Обновлены курсы валют: {rate}")
+
+        car_ids = ",".join(str(car.get("Id")) for car in cars if car.get("Id"))
+        log(f"ID: {car_ids}")
+
+        url = (
+            f"https://api.encar.com/v1/readside/vehicles"
+            f"?vehicleIds={car_ids}&include=SPEC,ADVERTISEMENT,PHOTOS,CATEGORY,MANAGE,CONTACT,VIEW"
+        )
+
+        log(url)
+
+        try:
+            # log(f"Используется прокси: {proxies}")
+            response = session.get(
+                url,
+                headers=HEADERS,
+                timeout=10,
+                # proxies=proxies,
+            )
+            response.raise_for_status()
+            cars_data = response.json()
+            log(f"Получено {len(cars_data)} объектов автомобилей из батч-запроса")
+
+            cars_dict = {}
+            for car_data in cars_data:
+                manage = car_data.get("manage", {})
+                # Выбираем правильный ключ: если dummy=True, то берем dummyVehicleId
+                if manage.get("dummy"):
+                    vehicle_id = str(manage.get("dummyVehicleId"))
+                else:
+                    vehicle_id = str(car_data.get("vehicleId"))
+
+                if vehicle_id:
+                    cars_dict[vehicle_id] = car_data
+
+            log(cars_dict)
+
+            for car in cars:
+                car_id = str(car.get("Id"))
+                car_data = None
+
+                # Ищем машину в словаре: сначала как обычный vehicleId
+                if car_id in cars_dict:
+                    car_data = cars_dict[car_id]
+                else:
+                    # Если не нашли, ищем как dummyVehicleId
+                    for v_id, data in cars_dict.items():
+                        if data.get("manage", {}).get("dummy") and str(data["manage"].get("dummyVehicleId")) == car_id:
+                            car_data = data
+                            break
+
+                if not car_data:
+                    log(f"WARNING: Car ID {car_id} не найден в cars_dict")
+                    continue
+
+                category = car_data.get('category', {})
+                yearMonth_str = category.get("yearMonth")
+                formatted = f"{yearMonth_str[:4]}/{yearMonth_str[4:]}"
+                car["YearMonth"] = formatted
+                car["Manufacturer"] = category.get("manufacturerName")
+                car["Manufacturer_eng"] = category.get("manufacturerEnglishName")
+                car["Model_eng"] = category.get("modelGroupEnglishName")
+                car["grade_eng"] = category.get("gradeEnglishName")
+
+                price = car.get("Price", 0)
+                price_rub = convert_currency(price * 1000, "KRW", "RUB", rate)
+                car["Price_RUB"] = value_converter(price_rub)
+
+        except Exception as e:
+            log(f"Ошибка при получении батч-данных авто: {e}")
+            return f"Вы получили ошибку батча-данных авто {e}. Возможно ведуться технические работы!"
+
+    except Exception as e:
+        log(f"Ошибка запроса API: {e}")
+        return f"Вы получили ошибку запроса API {e}. Возможно ведуться технические работы!"
+
+    query_args = request.args.to_dict()
+
+    prev_url = url_for("car_list_brand", car_brand=car_brand, page=page - 1, **query_args) if page > 1 else None
+    next_url = url_for("car_list_brand", car_brand=car_brand, page=page + 1, **query_args) if page < total_pages else None
+
+    return render_template(
+        "car_list.html",
+        cars=cars,
+        car_brand=car_brand,
+        page=page,
+        total_pages=total_pages,
+        next_url=next_url,
+        prev_url=prev_url,
+        model=model,
+        month_from=month_from,
+        month_to=month_to,
+        year_from=year_from,
+        year_to=year_to,
+        mileage_min=mileage_min,
+        mileage_max=mileage_max
+    )
 
 @app.route("/vehicle/<int:car_id>")
 def car_detail(car_id):
-    return render_template("car_detail.html", car=car_id)
+    url = (
+        f"https://api.encar.com/v1/readside/vehicles"
+        f"?vehicleIds={car_id}&include=SPEC,ADVERTISEMENT,PHOTOS,CATEGORY,MANAGE,CONTACT,VIEW"
+    )
+
+    car_obj = {}  # объект, который будем передавать в шаблон
+
+    try:
+        response = session.get(
+            url,
+            headers=HEADERS,
+            timeout=10,
+            # proxies=proxies,
+        )
+        response.raise_for_status()
+        cars_data = response.json()
+
+        if not cars_data:
+            log(f"Car ID {car_id} не найден в API")
+            return "404 ERROR"
+
+        car_data = cars_data[0]  # берём только первую (и единственную) машину
+
+        # Обработка manage/dummyVehicleId
+        manage = car_data.get("manage", {})
+        if manage.get("dummy"):
+            vehicle_id = str(manage.get("dummyVehicleId"))
+        else:
+            vehicle_id = str(car_data.get("vehicleId"))
+
+        category = car_data.get('category', {})
+        car_obj["Id"] = vehicle_id
+        car_obj["Manufacturer_eng"] = category.get("manufacturerEnglishName")
+        car_obj["Model_eng"] = category.get("modelGroupEnglishName")
+        car_obj["grade_eng"] = category.get("gradeEnglishName")
+        car_obj["photos"] = []
+
+        for photo in car_data.get("photos"):
+            url = f"https://ci.encar.com/carpicture{photo.get('path')}"
+            car_obj["photos"].append(url)
+
+        yearMonth_str = category.get("yearMonth")
+        formatted = f"{yearMonth_str[:4]}/{yearMonth_str[4:]}"
+        car_obj["YearMonth"] = formatted
+        price_krw = car_data.get("advertisement", {}).get("price", 0)
+        price_rub = convert_currency(price_krw * 1000, "KRW", "RUB", rate)
+        car_obj["Price_RUB"] = value_converter(price_rub)
+        car_obj["Mileage"] = value_converter(car_data.get("spec", {}).get("mileage", 0))
+        car_obj["Displacement"] = value_converter(car_data.get("spec", {}).get("displacement", 0))
+
+    except Exception as e:
+        log(f"Ошибка при получении данных авто: {e}")
+        return render_template("car_detail.html", car=None)
+
+    dt = datetime.strptime(car_obj["YearMonth"], "%Y/%m")
+
+    calc_data = {}
+
+    if calculate_the_date(dt) == "oldest":
+        calc_data = calculate_overall_cost_oldest(convert_currency(price_krw * 1000, "KRW", "USD", rate), float(car_obj["Displacement"].replace(" ", "")))
+    elif calculate_the_date(dt) == "old":
+        calc_data = calculate_overall_cost_old(convert_currency(price_krw * 1000, "KRW", "USD", rate), float(car_obj["Displacement"].replace(" ", "")))
+    elif calculate_the_date(dt) == "newest":
+        calc_data = calculate_overall_cost_new(convert_currency(price_krw * 1000, "KRW", "USD", rate), float(car_obj["Displacement"].replace(" ", "")))
+
+    print(calc_data)
+
+    return render_template("car_detail.html", car=car_obj, calc_data=calc_data)
 
 def initialize_app():
-    os.environ.pop("HTTP_PROXY", None)
-    os.environ.pop("HTTPS_PROXY", None)
-    os.environ.pop("http_proxy", None)
-    os.environ.pop("https_proxy", None)
-
-    log("Все прокси были отключены.")
-
-
-    asyncio.run(update_cookies_and_tokens())
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(update_cookies_and_tokens())
     log("Обновления курса")
+    global rate
     rate = get_exchange_rates()
-    threading.Thread(target=rates_refresher, daemon=True).start()
-    log("Flask запущен")
 
 if __name__ == "__main__":
+    threading.Thread(target=parser_refresher, daemon=True).start()
     initialize_app()
-    app.run()
+    app.run(debug=True)

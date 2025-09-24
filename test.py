@@ -1,39 +1,139 @@
 import requests
+from flask import Flask, render_template
+import requests, json, threading, time
+from playwright.async_api import async_playwright
+import xml.etree.ElementTree as ET
+from datetime import date, datetime
+import asyncio
+import os
+from playwright_stealth import Stealth
 
-url = "https://api.encar.com/search/car/list/premium?count=true&q=(And.Hidden.N._.CarType.Y.)&sr=%7CModifiedDate%7C0%7C20"
+async def update_cookies_and_tokens():
+    ENCAR_PAGE = "https://www.encar.com"
+    start_time = time.time()
+    print(f"[{time.strftime('%H:%M:%S')}] ▶️ Старт функции update_cookies_and_tokens")
 
-encar_cookies = {
-    "_enlog_datatalk_hit": "",
-    "_enlog_lpi": "0d48.aHR0cHM6Ly93d3cuZW5jYXIuY29tL2luZGV4LmRv.a53",
-    "_ga": "GA1.2.2111845228.1757932394",
-    "_ga_WY0RWR65ED": "GS2.2.s1758193272$o4$g1$t1758194645$j26$l0$h0",
-    "_gcl_au": "1.1.1318046605.1758025212",
-    "_gid": "GA1.2.32251106.1758193272",
-    "AEC": "AaJma5tz9C4Y3lm16Jc6iyaIeJW3HqVWTvdNpM33g_Vm7bre7tqqjXuIAA",
-    "APISID": "PT6hW874qUSd14qw/AUbzFFlYnA5O7HWxH",
-    "DV": "EwXRP1JGe4gvUAuW96t36_5eimTJlZn-BnbWayEtSgAAAAA",
-    "HSID": "ASDYO8Tp2fkCjxr0f",
-    "IDE": "AHWqTUkXcngHmYvrJfjIW2BJ5z3n3Ngk9Zor6dIUYSbJm2n7dwBpn85yMuhz8l4UsMg",
-    "JSESSIONID": "460FFFB6CF93B8802722DF75F087D99E.mono-web-prod_199.37",
-    "NID": "525=c99gXSFkPvL0EWpaAYnYrlH9BKJ6AyY4fjHdYWpShMylfMVFL0eDMgw7J1h-vPzLKtMR6MfLgMnB-ei_al_Zq9mtwOwvodu2014juk-E5VqOOtfU7QJC0MhC2xz7XdXpzNPfDvqNjs4T1iH6kqDFCGwB0jxqXqoWY2jyA3M2phFhu7fENnU5wXrYWmB1pR_G0m-lyPeVpoMJ8hdXV_k3dbATmpEeBQQ4JglcIAcIo29UMUt_orSMQPSEXl3AAU4xKBpIwV8jbZhz5LmRwf1X-uv9qOVYleuM9afuVPRgVA8sivlMcUfzyVr_L5jHYFqjxhD54nigmkYcOf_dZ-cS5YEY3pqfAUyrd5KQWNH-ciklJCmEDFUHGNZ7GDszDrEAiPHuDVXQg1RAuaM822p34KbgxE1yz1uzbwdOCYWL-bcBksmEBHGQlBPvVJV2AzMOdwXLE9bYI4v3ZhOy62PcarvRXM8rz-I4znI63FTC5UtljoZx_1Ijv1uznjrHid_9t0TbL9v3P-olX7LY9vyY5C_dQEV1qigd7p_Lbh2holZo7YeGZxWHDKybbN0G6cU6Ha7uKMOyPziZ8aw4ZBt7Oma0xEszwl9Wcx31HsS_ZtfdNiYnd1c4RVccGRgRXUqWdYJTnm-vq3G37J-464bjBo2LrvQr3wHDU4i_248nnisF0hSm1RPU-Ul3jjfEITGy4w1NLRIULbe_n1l3b0BBsxmXiI5OfDJe9iWEdY8m80va3XG86ZuCwHs_IaKSAFMGWx0OTk5zYTEBOVqi4zrwhqjKRe1H_D614is1_WKMAUZ8a6IoSpoancgR6XmQMRKBLIjeywFtqHWDgLVk7pGM_9WymXcNPJ1-njCHVwZEae-OoCFle_NZ9k8zPRl_uGfBRJyX8E_KQCoyMW75ecJG-iQ6KGEmE5R3BfUPkCGceevi-c0NAaxG1fmsh87dJKzjv2H7RC-VKQUhuDugEftS0uC0TARnb029lsjj81rlnjyRbBfhBFdeD8XN4sRs9Jfo3IJrXPVk8JyjROZHuKLqnxSuPHRRUJKpFShZO-knmKhlP6QsWErNTIT7uAtxgDeR2hwhiRkaRXyf3l6wQe22RO-01MgYagnaaoO_DDeeKAXr_xHOnWWzzf11f5Mwm70",
-    "PCID": "17579323937614380552824",
-    "PERSISTENT_USERTYPE": "1",
-    "SAPISID": "ljK395KBd_a4UtKa/A-xu7u7X1SQtcbsEP",
-    "SID": "g.a0001ghKazKULubq9y-VJMwUnNFrBDu0nwkUpCMuvwPN_5V_7wqgQKksnuxAISY8yTHMWY8dpwACgYKAUUSARQSFQHGX2Mi575W1EiFgWxsG32z_NJFUhoVAUF8yKrx5reRzdSa9z_axqfl_Z9b0076",
-    "SIDCC": "AKEyXzWGjavCiKWa-FnC6tztB6r3zlxXMuOibX7cTtEHH9A0jZ62n-dHCOJa5BPJ5Erko_lCp9I",
-    "SSID": "AtsrjxkR3orx4VOjj",
-    "WMONID": "GJNPd05q7JA"
-}
+    async with Stealth().use_async(async_playwright()) as p:
+        print(f"[{time.strftime('%H:%M:%S')}] 🧠 Инициализация браузера")
+        browser = await p.chromium.launch(
+            headless=True,
+            # --- НАСТРОЙКИ ПРОКСИ ---
+            proxy={
+                "server": "http://res.proxy-seller.io:10000",
+                "username": "58272ea5b2cac129",
+                "password": "QbhuX4Ha"
+            },
+            args=[
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-setuid-sandbox",
+                "--disable-infobars",
+                "--window-size=1280,800",
+                "--disable-blink-features=AutomationControlled",
+                "--disable-web-security",
+                "--disable-features=IsolateOrigins,site-per-process",
+                "--disable-gpu",
+                "--use-gl=swiftshader"
+            ]
+        )
+
+        context = await browser.new_context(
+            viewport={"width": 1280, "height": 800},
+            user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/140.0.0.0 Safari/537.36"
+            ),
+            locale="ko-KR",
+            java_script_enabled=True
+        )
+
+        page = await context.new_page()
+        print(f"[{time.strftime('%H:%M:%S')}] 🌐 Навигация на {ENCAR_PAGE}")
+
+        try:
+            await page.goto(ENCAR_PAGE, wait_until="domcontentloaded", timeout=20000)
+            print(f"[{time.strftime('%H:%M:%S')}] ✅ Страница загружена (DOMContentLoaded)")
+        except Exception as e:
+            print(f"[{time.strftime('%H:%M:%S')}] ❌ Ошибка загрузки страницы: {e}")
+
+        await page.wait_for_timeout(5000)
+        print(f"[{time.strftime('%H:%M:%S')}] ⏳ Ждём 5 секунд перед взаимодействием")
+
+        try:
+            await page.mouse.move(300, 400)
+            await page.mouse.click(300, 400)
+            await page.keyboard.press("PageDown")
+            await page.keyboard.press("ArrowDown")
+            await page.wait_for_timeout(3000)
+            print(f"[{time.strftime('%H:%M:%S')}] 🖱️ Имитация действий завершена")
+        except Exception as e:
+            print(f"[{time.strftime('%H:%M:%S')}] ⚠️ Ошибка при имитации действий: {e}")
+
+        try:
+            await page.wait_for_selector("body", timeout=30000)
+            print(f"[{time.strftime('%H:%M:%S')}] ✅ Селектор <body> найден")
+        except Exception as e:
+            print(f"[{time.strftime('%H:%M:%S')}] ❌ Селектор <body> не найден: {e}")
+
+        cookies_list = await context.cookies()
+        cookies_dict = {c["name"]: c["value"] for c in cookies_list}
+        print(f"[{time.strftime('%H:%M:%S')}] 🍪 Получено {len(cookies_list)} cookies:")
+        for k, v in cookies_dict.items():
+            print(f"  {k} = {v}")
+
+        try:
+            local_raw = await page.evaluate("() => JSON.stringify({...localStorage})")
+            session_raw = await page.evaluate("() => JSON.stringify({...sessionStorage})")
+            local = json.loads(local_raw) if local_raw else {}
+            session_storage = json.loads(session_raw) if session_raw else {}
+            print(f"[{time.strftime('%H:%M:%S')}] 📦 localStorage: {list(local.keys())}")
+            print(f"[{time.strftime('%H:%M:%S')}] 📦 sessionStorage: {list(session_storage.keys())}")
+        except Exception as e:
+            print(f"[{time.strftime('%H:%M:%S')}] ❌ Ошибка чтения storages: {e}")
+            local = {}
+            session_storage = {}
+
+        await browser.close()
+        print(f"[{time.strftime('%H:%M:%S')}] 🧹 Браузер закрыт")
+        print(f"[{time.strftime('%H:%M:%S')}] ⏱️ Время выполнения: {round(time.time() - start_time, 2)} сек")
+
+        return {
+            "cookies_list": cookies_list,
+            "cookies_dict": cookies_dict,
+            "localStorage": local,
+            "sessionStorage": session_storage,
+        }
 
 headers = {
-    "Accept": "text/javascript, text/html, application/xml, text/xml, */*",
-    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-    "Origin": "https://www.encar.com",
-    "Referer": "https://www.encar.com/dc/dc_carsearchlist.do?carType=kor",
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)...",
-    "X-Requested-With": "XMLHttpRequest"
+    'accept': 'application/json, text/javascript, */*; q=0.01',
+    'accept-language': 'ru-RU,ru;q=0.9',
+    'origin': 'https://www.encar.com',
+    'priority': 'u=1, i',
+    'referer': 'https://www.encar.com/',
+    'sec-ch-ua': '"Not=A?Brand";v="24", "Chromium";v="140"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Windows"',
+    'sec-fetch-dest': 'empty',
+    'sec-fetch-mode': 'cors',
+    'sec-fetch-site': 'same-site',
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
 }
 
-response = requests.post(url, headers=headers, cookies=encar_cookies)
+proxies = {
+    "http": "58272ea5b2cac129:QbhuX4Ha@res.proxy-seller.io:10000",
+    "https": "58272ea5b2cac129:QbhuX4Ha@res.proxy-seller.io:10000",
+}
 
-print(response.status_code)  # или .json(), если это JSON
+session = requests.Session()
+
+asyncio.run(update_cookies_and_tokens())
+
+response = session.get(
+    'https://api.encar.com/search/car/list/premium?count=true&q=(And.Hidden.N._.CarType.Y.)&sr=%7CModifiedDate%7C0%7C20',
+    headers=headers,
+    proxies=proxies
+)
+
+print(response.status_code)
+print(response.text)

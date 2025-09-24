@@ -1,9 +1,9 @@
-<nav class="navbar navbar-expand-lg navbar-dark bg-danger">
+<nav class="navbar navbar-expand-lg navbar-dark bg-danger fixed-top">
   <div class="container">
     <!-- Логотип -->
     <a class="navbar-brand d-flex align-items-center" href="/">
       <img src="{{ url_for('static', filename='encar_logo.png') }}" alt="Logo" height="40" class="me-2">
-        Cars Company
+        Encar Россия
     </a>
 
     <!-- Кнопка для мобилок -->
@@ -15,12 +15,12 @@
     <!-- Разделы -->
     <div class="collapse navbar-collapse" id="navbarNav">
       <ul class="navbar-nav ms-auto">
-        <li class="nav-item"><a class="nav-link" href="">Hyundai</a></li>
-        <li class="nav-item"><a class="nav-link" href="">Kia</a></li>
-        <li class="nav-item"><a class="nav-link" href="">Genesis</a></li>
-        <li class="nav-item"><a class="nav-link" href="">BMW</a></li>
-        <li class="nav-item"><a class="nav-link" href="">Benz</a></li>
-        <li class="nav-item"><a class="nav-link" href="">Audi</a></li>
+        <li class="nav-item"><a class="nav-link" href="/car-list/현대/1">Hyundai</a></li>
+        <li class="nav-item"><a class="nav-link" href="/car-list/기아/1">Kia</a></li>
+        <li class="nav-item"><a class="nav-link" href="/car-list/제네시스/1">Genesis</a></li>
+        <li class="nav-item"><a class="nav-link" href="/car-list-foreign/BMW/1">BMW</a></li>
+        <li class="nav-item"><a class="nav-link" href="/car-list-foreign/벤츠/1">Benz</a></li>
+        <li class="nav-item"><a class="nav-link" href="/car-list-foreign/아우디/1">Audi</a></li>
       </ul>
     </div>
   </div>
