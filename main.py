@@ -22,7 +22,7 @@ def get_exchange_rates():
     url = "https://www.cbr.ru/scripts/XML_daily.asp"
 
     try:
-        response = session.get(url, timeout=100)
+        response = session.get(url, proxies=proxies, timeout=10000)
         response.raise_for_status()
     except requests.RequestException as e:
         raise ConnectionError(f"Ошибка при запросе к Центробанку: {e}")
