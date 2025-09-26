@@ -12,11 +12,11 @@ from playwright_stealth import Stealth
 proxies = {
     "http": "58272ea5b2cac129:QbhuX4Ha@res.proxy-seller.io:10000",
     "https": "58272ea5b2cac129:QbhuX4Ha@res.proxy-seller.io:10000",
+    # "http": "",
+    # "https": ""
 }
 
 session = requests.Session()
-
-rate = {}
 
 def get_exchange_rates():
     url = "https://www.cbr.ru/scripts/XML_daily.asp"
