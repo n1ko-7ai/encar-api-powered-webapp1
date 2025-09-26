@@ -308,7 +308,7 @@ async def update_cookies_and_tokens():
     async with Stealth().use_async(async_playwright()) as p:
         print(f"[{time.strftime('%H:%M:%S')}] 🧠 Инициализация браузера")
         browser = await p.chromium.launch(
-            headless=True,
+            headless=False,
             # --- НАСТРОЙКИ ПРОКСИ ---
             proxy={
                 "server": "http://res.proxy-seller.io:10000",
